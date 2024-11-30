@@ -11,40 +11,16 @@
 
 import arcade
 
-# Constants
+from entities import Enemy, enemy_list, Obstacle, obstacle_list, \
+    Collectable, collectable_list, Bullet, bullet_list
+from constants import SCREEN_WIDTH, SCREEN_HEIGHT
 
-# These values represent the size of the internal canvas. This is
-# the number of pixels that will be computed, which will then be
-# scaled to the size of the window
-SCREEN_WIDTH = 1920
-SCREEN_HEIGHT = 1080
+# Constants
 
 # Values concerning the window, including default dimensions.
 WINDOW_TITLE = "SDEV 265 Space Game"
 WINDOW_DEFAULT_WIDTH = 1280
 WINDOW_DEFAULT_HEIGHT = 720
-
-class Entity:
-    def __init__(self, x, y, velocityX, velocityY):
-        self.x = x
-        self.y = y
-        self.velocityX = velocityX
-        self.velocityY = velocityY
-
-    def update(self):
-        self.x += self.velocityX
-        self.y += self.velocityY
-
-    def draw(self):
-        # Draw a red square on screen. This method can be overridden
-        # when making new entity types to draw different shapes,
-        # sprites, and/or effects
-        arcade.draw_rectangle_filled(self.x, self.y, 50, 50, arcade.color.RED_BROWN, 0)
-
-    # Debug function that prints entity information to console. Currently unused.
-    def print(self, id):
-        print("Entity " + str(id) + " at (" + str(self.x) + ", " + str(self.y) + \
-            ") with velocity (" + str(self.velocityX) + ", " + str(self.velocityY) + ")")
         
 # Class for the main game loop, extends Arcade's Window class
 class SpaceGame(arcade.Window):
@@ -56,13 +32,21 @@ class SpaceGame(arcade.Window):
         # ensure the letterboxing works correctly when resizing
         arcade.set_background_color(arcade.color.GRAY)
 
-        # Create an array of Entities for testing purposes
-        self.entityList = []
-        self.entityList.append(Entity(525, 525, .1, -.1))
-        self.entityList.append(Entity(523, 544, .5, .4))
-        self.entityList.append(Entity(500, 578, .3, -.1))
-        self.entityList.append(Entity(545, 554, -.3, .1))
-        self.entityList.append(Entity(577, 577, -.1, .1))
+        # Populate array of Enemies for testing purposes
+        for _ in range(5):
+            enemy_list.append(Enemy(0))
+
+        # Populate array of Obstacles for testing purposes
+        for _ in range(5):
+            obstacle_list.append(Obstacle(0))
+
+        # Populate array of Collectables for testing purposes
+        for _ in range(5):
+            collectable_list.append(Collectable(0))
+
+        # Populate array of Bullets for testing purposes
+        for _ in range(5):
+            bullet_list.append(Bullet(0))
         
     # Drawing method that is called on every frame
     def on_draw(self):
@@ -70,9 +54,30 @@ class SpaceGame(arcade.Window):
         self.clear()
 
         # Now update and draw all the entities
-        for entity in self.entityList:
-            entity.update()
-            entity.draw()
+        for enemy in enemy_list:
+            enemy.update()
+            enemy.draw()
+        for obstacle in obstacle_list:
+            obstacle.update()
+            obstacle.draw()
+        for collectable in collectable_list:
+            collectable.update()
+            collectable.draw()
+        for bullet in bullet_list:
+            bullet.update()
+            bullet.draw()
+
+        # Remove off screen and dead entities
+        enemy_list[:] = list(filter(lambda enemy: enemy.y > -10 and enemy.health > 0, enemy_list))
+        obstacle_list[:] = list(filter(lambda obstacle: obstacle.y > -10 and obstacle.health > 0, obstacle_list))
+        collectable_list[:] = list(filter(lambda collectable: collectable.y > -10, collectable_list))
+        bullet_list[:] = list(filter(lambda bullet: bullet.y < SCREEN_HEIGHT + 10 and bullet.y > -10, bullet_list))
+
+        # Print debug info
+        arcade.draw_text("Enemy count: " + str(len(enemy_list)), 50, 90, arcade.color.BLACK)
+        arcade.draw_text("Obstacle count: " + str(len(obstacle_list)), 50, 70, arcade.color.BLACK)
+        arcade.draw_text("Collectable count: " + str(len(collectable_list)), 50, 50, arcade.color.BLACK)
+        arcade.draw_text("Bullet count: " + str(len(bullet_list)), 50, 30, arcade.color.BLACK)
 
     # Scale the image to the size of the window, maintaining aspect ratio.
     # There may be a simpler way to achieve this result using Arcade's
