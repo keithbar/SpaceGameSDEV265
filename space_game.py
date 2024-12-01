@@ -34,15 +34,15 @@ class SpaceGame(arcade.Window):
 
         # Populate array of Enemies for testing purposes
         for _ in range(5):
-            enemy_list.append(Enemy(0))
+            enemy_list.append(Enemy("basic_straight"))
 
         # Populate array of Obstacles for testing purposes
         for _ in range(5):
-            obstacle_list.append(Obstacle(0))
+            obstacle_list.append(Obstacle("small"))
 
         # Populate array of Collectables for testing purposes
         for _ in range(5):
-            collectable_list.append(Collectable(0))
+            collectable_list.append(Collectable("health_small"))
 
         # Populate array of Bullets for testing purposes
         for _ in range(5):
