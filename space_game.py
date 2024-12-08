@@ -78,12 +78,51 @@ BULLET_STATS = {
     "player_basic": { "velocity_x": (0, 0), "velocity_y": (bulletSpeed, bulletSpeed), "friendly": True},
     "enemy_basic": { "velocity_x": (0, 0), "velocity_y": (-3, -1), "friendly": False}
 }
-        
-# Class for the main game loop, extends Arcade's Window class
-class SpaceGame(arcade.Window):
+
+# An Arcade Window that will be set to display one of the following Views:
+# SpaceGameView: The main gameplay
+# TitleView: The title screen
+# GameOverView: The game over screen
+class SpaceGameWindow(arcade.Window):
     def __init__(self):
         # Initialize the window
         super().__init__(WINDOW_DEFAULT_WIDTH, WINDOW_DEFAULT_HEIGHT, WINDOW_TITLE, resizable=True)
+
+    # Scale the image to the size of the window, maintaining aspect ratio.
+    # There may be a simpler way to achieve this result using Arcade's
+    # Camera class, but I wasn't able to figure it out.
+    # Confusingly, this method refers to two different "viewports" that
+    # serve different purposes:
+    # 1. The window viewport describes what part of the internal coordinates
+    #    will be drawn to the window. We want to keep this consistent so
+    #    that the same visuals will be drawn regardless of window size.
+    # 2. The context viewport is part of a "context" object that is part of
+    #    every Arcade window object, which seems to contain information that
+    #    the window uses for rendering. Here we manipulate the context
+    #    viewport to change where within the window we draw. This is done to
+    #    maintain the image aspect ratio as the user resizes the window.
+    def on_resize(self, width, height):
+        # Set window viewport; this ensures that the entire screen will be drawn within the window
+        arcade.set_viewport(0, SCREEN_WIDTH, 0, SCREEN_HEIGHT)
+
+        screen_aspect_ratio = SCREEN_WIDTH / SCREEN_HEIGHT
+        window_aspect_ratio = width / height
+
+        # Adjusting the window's context viewport allows us to move where within the window we draw
+        # This allows us to maintain the image aspect ratio as the window is resized
+        if(screen_aspect_ratio >= window_aspect_ratio):
+            viewport_width = width
+            viewport_height = width / screen_aspect_ratio
+            self.ctx.viewport = 0, (height - viewport_height) / 2, viewport_width, viewport_height
+        else:
+            viewport_width = height * screen_aspect_ratio
+            viewport_height = height
+            self.ctx.viewport = (width - viewport_width) / 2, 0, viewport_width, viewport_height
+        
+# Class for the main game loop, extends Arcade's View class
+class SpaceGameView(arcade.View):
+    def __init__(self):
+        super().__init__()
         self.player = None
         self.player_list = None
         self.bullet_list = None
@@ -191,37 +230,6 @@ class SpaceGame(arcade.Window):
             self.player.change_x = 0
         elif key in [arcade.key.UP, arcade.key.DOWN]:
             self.player.change_y = 0
-
-    # Scale the image to the size of the window, maintaining aspect ratio.
-    # There may be a simpler way to achieve this result using Arcade's
-    # Camera class, but I wasn't able to figure it out.
-    # Confusingly, this method refers to two different "viewports" that
-    # serve different purposes:
-    # 1. The window viewport describes what part of the internal coordinates
-    #    will be drawn to the window. We want to keep this consistent so
-    #    that the same visuals will be drawn regardless of window size.
-    # 2. The context viewport is part of a "context" object that is part of
-    #    every Arcade window object, which seems to contain information that
-    #    the window uses for rendering. Here we manipulate the context
-    #    viewport to change where within the window we draw. This is done to
-    #    maintain the image aspect ratio as the user resizes the window.
-    def on_resize(self, width, height):
-        # Set window viewport; this ensures that the entire screen will be drawn within the window
-        arcade.set_viewport(0, SCREEN_WIDTH, 0, SCREEN_HEIGHT)
-
-        screen_aspect_ratio = SCREEN_WIDTH / SCREEN_HEIGHT
-        window_aspect_ratio = width / height
-
-        # Adjusting the window's context viewport allows us to move where within the window we draw
-        # This allows us to maintain the image aspect ratio as the window is resized
-        if(screen_aspect_ratio >= window_aspect_ratio):
-            viewport_width = width
-            viewport_height = width / screen_aspect_ratio
-            self.ctx.viewport = 0, (height - viewport_height) / 2, viewport_width, viewport_height
-        else:
-            viewport_width = height * screen_aspect_ratio
-            viewport_height = height
-            self.ctx.viewport = (width - viewport_width) / 2, 0, viewport_width, viewport_height
 
     def cull_off_screen(self):
         # Removes the bullets that are off screen 
@@ -357,9 +365,97 @@ class SpaceGame(arcade.Window):
         if type == "health_small":
             player.health += 1
 
+START_GAME = 0
+HIGH_SCORE = 1
+SETTINGS = 2
+QUIT_GAME = 3
+
+class TitleView(arcade.View):
+    def __init__(self):
+        super().__init__()
+
+    def setup(self):
+        self.selected_action = START_GAME
+
+    def on_draw(self):
+        arcade.start_render()
+
+        arcade.draw_text("SDEV 265\nSPACE GAME", 0, SCREEN_HEIGHT * 0.7,
+            font_size = 50, width = SCREEN_WIDTH, align = "center")
+        
+        # Values to make changing text layout easier
+        option_font_size = 25
+        option_line_height = 35
+        option_y_start = SCREEN_HEIGHT * 0.4
+
+        text_start_game = arcade.Text(" Start Game ", 0, option_y_start, 
+            font_size = option_font_size, width = SCREEN_WIDTH, align = "center")
+        text_start_game.draw()
+
+        text_high_score = arcade.Text(" High Scores ", 0, option_y_start - option_line_height, 
+            font_size = option_font_size, width = SCREEN_WIDTH, align = "center")
+        text_high_score.draw()
+
+        text_settings = arcade.Text(" Settings ", 0, option_y_start - option_line_height * 2, 
+            font_size = option_font_size, width = SCREEN_WIDTH, align = "center")
+        text_settings.draw()
+
+        text_quit = arcade.Text(" Quit ", 0, option_y_start - option_line_height * 3, 
+            font_size = option_font_size, width = SCREEN_WIDTH, align = "center")
+        text_quit.draw()
+        
+        if self.selected_action == START_GAME:
+            selected_text = text_start_game
+        elif self.selected_action == HIGH_SCORE:
+            selected_text = text_high_score
+        elif self.selected_action == SETTINGS:
+            selected_text = text_settings
+        else:
+            selected_text = text_quit
+
+        arrow_size = 25
+        text_width = selected_text.content_width
+        arrow_left_x = SCREEN_WIDTH / 2 - text_width / 2 - arrow_size
+        arrow_right_x = SCREEN_WIDTH / 2 + text_width / 2 + arrow_size
+        arrow_y = selected_text.y
+        arcade.draw_triangle_filled(
+            arrow_left_x, arrow_y, 
+            arrow_left_x, arrow_y + arrow_size,
+            arrow_left_x + arrow_size, arrow_y + arrow_size / 2,
+            arcade.color.WHITE
+        )
+        arcade.draw_triangle_filled(
+            arrow_right_x, arrow_y,
+            arrow_right_x, arrow_y + arrow_size,
+            arrow_right_x - arrow_size, arrow_y + arrow_size / 2,
+            arcade.color.WHITE
+        )
+
+    def on_key_press(self, key, modifiers):
+        if key == arcade.key.DOWN:
+            self.selected_action += 1
+            if self.selected_action > QUIT_GAME:
+                self.selected_action = START_GAME
+
+        if key == arcade.key.UP:
+            self.selected_action -= 1
+            if self.selected_action < START_GAME:
+                self.selected_action = QUIT_GAME
+
+    def on_key_release(self, key, modifiers):
+        if key == arcade.key.ENTER:
+            if self.selected_action == START_GAME:
+                game = SpaceGameView()
+                game.setup()
+                self.window.show_view(game)
+
 def main():
-    game = SpaceGame()
-    game.setup()
+    window = SpaceGameWindow()
+    #game = SpaceGameView()
+    #game.setup()
+    title = TitleView()
+    title.setup()
+    window.show_view(title)
     arcade.run()
 
 if __name__ == "__main__":
