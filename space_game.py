@@ -27,21 +27,29 @@ ENEMY_STATS = {
 # Obstacle types and their defaul stats
 OBSTACLE_STATS = {
     "small":
-        { "health": 1, "velocity_x": (0, 0), "velocity_y": (-5, -2), "velocity_rotation": (-5, 5) },
+        { "health": 1, "velocity_x": (0, 0), "velocity_y": (-5, -2), \
+            "velocity_rotation": (-5, 5), "strength": 1 },
     "small_fast":
-        { "health": 1, "velocity_x": (0, 0), "velocity_y": (-5, -2), "velocity_rotation": (-5, 5) },
+        { "health": 1, "velocity_x": (0, 0), "velocity_y": (-5, -2), \
+            "velocity_rotation": (-5, 5), "strength": 1 },
     "medium":
-        { "health": 1, "velocity_x": (0, 0), "velocity_y": (-5, -2), "velocity_rotation": (-5, 5) },
+        { "health": 1, "velocity_x": (0, 0), "velocity_y": (-5, -2), \
+            "velocity_rotation": (-5, 5,), "strength": 2 },
     "medium_fast":
-        { "health": 1, "velocity_x": (0, 0), "velocity_y": (-5, -2), "velocity_rotation": (-5, 5) },
+        { "health": 1, "velocity_x": (0, 0), "velocity_y": (-5, -2), \
+            "velocity_rotation": (-5, 5), "strength": 2 },
     "large":
-        { "health": 3, "velocity_x": (0, 0), "velocity_y": (-5, -2), "velocity_rotation": (-5, 5) },
+        { "health": 3, "velocity_x": (0, 0), "velocity_y": (-5, -2), \
+            "velocity_rotation": (-5, 5), "strength": 3 },
     "large_fast":
-        { "health": 3, "velocity_x": (0, 0), "velocity_y": (-5, -2), "velocity_rotation": (-5, 5) },
+        { "health": 3, "velocity_x": (0, 0), "velocity_y": (-5, -2), \
+            "velocity_rotation": (-5, 5), "strength": 3 },
     "long":
-        { "health": 1, "velocity_x": (0, 0), "velocity_y": (-5, -2), "velocity_rotation": (-5, 5) },
+        { "health": 1, "velocity_x": (0, 0), "velocity_y": (-5, -2), \
+            "velocity_rotation": (-5, 5), "strength": 2 },
     "long_fast":
-        { "health": 1, "velocity_x": (0, 0), "velocity_y": (-5, -2), "velocity_rotation": (-5, 5) }
+        { "health": 1, "velocity_x": (0, 0), "velocity_y": (-5, -2), \
+            "velocity_rotation": (-5, 5), "strength": 2 }
 }
 
 # Collectable types and their stats
@@ -64,6 +72,12 @@ COLLECTABLE_STATS = {
 
 playerSpeed = 5
 bulletSpeed = 7
+
+# Bullet types and their stats
+BULLET_STATS = {
+    "player_basic": { "velocity_x": (0, 0), "velocity_y": (bulletSpeed, bulletSpeed), "friendly": True},
+    "enemy_basic": { "velocity_x": (0, 0), "velocity_y": (-3, -1), "friendly": False}
+}
         
 # Class for the main game loop, extends Arcade's Window class
 class SpaceGame(arcade.Window):
@@ -99,6 +113,7 @@ class SpaceGame(arcade.Window):
         self.player = arcade.Sprite(":resources:images/space_shooter/playerShip1_orange.png", 0.8)
         self.player.center_x = SCREEN_WIDTH // 2
         self.player.center_y = 50
+        self.player.health = 100
         self.player_list.append(self.player)
 
         # Spawns some objects for testing purposes
@@ -106,6 +121,7 @@ class SpaceGame(arcade.Window):
             self.spawn_enemy("basic_straight")
             self.spawn_obstacle("small")
             self.spawn_collectable("health_small")
+        self.spawn_bullet("enemy_basic", 1000, 1080)
         
     # Drawing method that is called on every frame
     def on_draw(self):
@@ -119,6 +135,9 @@ class SpaceGame(arcade.Window):
         # This will display the score and text for our game
         arcade.draw_text(f"Score: {self.score}", 10, SCREEN_HEIGHT - 50, arcade.color.WHITE, 20)
         arcade.draw_text(f"Wave: {self.wave}", SCREEN_WIDTH - 130, SCREEN_HEIGHT - 50, arcade.color.WHITE, 20)
+
+        # Debug info
+        arcade.draw_text(f"Health: {self.player.health}", 10, 20)
 
     def on_key_press(self, key, modifiers):
         if key == arcade.key.LEFT:
@@ -135,11 +154,7 @@ class SpaceGame(arcade.Window):
         
         #This is the projectile I found that looked the best so far however we can change for whatever everyone likes 
         elif key == arcade.key.SPACE:
-            bullet = arcade.Sprite(":resources:images/space_shooter/laserRed01.png", 0.8)
-            bullet.center_x = self.player.center_x
-            bullet.center_y = self.player.center_y + 20
-            bullet.change_y = bulletSpeed
-            self.bullet_list.append(bullet)
+            self.spawn_bullet("player_basic", self.player.center_x, self.player.center_y + 20)
 
     def update(self, delta_time):
         if self.game_over:
@@ -164,25 +179,11 @@ class SpaceGame(arcade.Window):
         elif self.player.top > SCREEN_HEIGHT:
             self.player.top = SCREEN_HEIGHT
 
-        # Removes the bullets that are off screen 
-        for bullet in self.bullet_list:
-            if bullet.bottom > SCREEN_HEIGHT:
-                bullet.remove_from_sprite_lists()
+        # Remove entities that have moved off screen
+        self.cull_off_screen()
 
-        # Removes enemies that are off screen
-        for enemy in self.enemy_list:
-            if enemy.top < 0:
-                enemy.remove_from_sprite_lists()
-
-        # Removes obstacles that are off screen
-        for obstacle in self.obstacle_list:
-            if obstacle.top < 0:
-                obstacle.remove_from_sprite_lists()
-
-        # Removes collectables that are off screen
-        for collectable in self.collectable_list:
-            if collectable.top < 0:
-                collectable.remove_from_sprite_lists()
+        # Check for collision between entities
+        self.check_collision()
     
     #Updates button press on release so that we dont continue moving
     def on_key_release(self, key, modifiers):
@@ -222,6 +223,89 @@ class SpaceGame(arcade.Window):
             viewport_height = height
             self.ctx.viewport = (width - viewport_width) / 2, 0, viewport_width, viewport_height
 
+    def cull_off_screen(self):
+        # Removes the bullets that are off screen 
+        for bullet in self.bullet_list:
+            if bullet.bottom > SCREEN_HEIGHT:
+                bullet.remove_from_sprite_lists()
+
+        # Removes enemies that are off screen
+        for enemy in self.enemy_list:
+            if enemy.top < 0:
+                enemy.remove_from_sprite_lists()
+
+        # Removes obstacles that are off screen
+        for obstacle in self.obstacle_list:
+            if obstacle.top < 0:
+                obstacle.remove_from_sprite_lists()
+
+        # Removes collectables that are off screen
+        for collectable in self.collectable_list:
+            if collectable.top < 0:
+                collectable.remove_from_sprite_lists()
+
+    #
+    def check_collision(self):
+        for player in self.player_list:
+
+            # Check for player-enemy collisions
+            player_enemy_collision = arcade.check_for_collision_with_list(
+                player, self.enemy_list
+            )
+            # Decrement player health and destroy enemy
+            for enemy in player_enemy_collision:
+                player.health -= enemy.strength
+                enemy.remove_from_sprite_lists()
+
+            # Check for player-bullet collisions
+            player_bullet_collision = arcade.check_for_collision_with_list(
+                player, self.bullet_list
+            )
+            for bullet in player_bullet_collision:
+                if bullet.friendly == False:
+                    player.health -= bullet.strength
+                    bullet.remove_from_sprite_lists()
+
+            # Check for player-obstacle collisions
+            player_obstacle_collision = arcade.check_for_collision_with_list(
+                player, self.obstacle_list
+            )
+            for obstacle in player_obstacle_collision:
+                player.health -= obstacle.strength
+                obstacle.remove_from_sprite_lists()
+
+            # Check for player-collectable collisions
+            player_collectable_collision = arcade.check_for_collision_with_list(
+                player, self.collectable_list
+            )
+            for collectable in player_collectable_collision:
+                self.collect_collectable(player, collectable.type)
+                collectable.remove_from_sprite_lists()
+
+        # Check for enemy-bullet collisions
+        for bullet in self.bullet_list:
+            if bullet.friendly == True:
+                enemy_bullet_collision = arcade.check_for_collision_with_list(
+                    bullet, self.enemy_list
+                )
+                for enemy in enemy_bullet_collision:
+                    # Update this for enemy health, currently just instakills
+                    enemy.remove_from_sprite_lists()
+                    bullet.remove_from_sprite_lists()
+                    break
+
+        # Check for obstacle-bullet collisions
+        for bullet in self.bullet_list:
+            if bullet.friendly == True:
+                obstacle_bullet_collision = arcade.check_for_collision_with_list(
+                    bullet, self.obstacle_list
+                )
+                for obstacle in obstacle_bullet_collision:
+                    # Update this for obstacle health, currently just instakills
+                    obstacle.remove_from_sprite_lists()
+                    bullet.remove_from_sprite_lists()
+                    break
+
     # Spawns a new enemy of the given type (see ENEMY_STATS above)
     def spawn_enemy(self, type):
         enemy = arcade.Sprite(":resources:images/space_shooter/playerShip3_orange.png", 0.8, flipped_vertically=True)
@@ -231,6 +315,7 @@ class SpaceGame(arcade.Window):
         enemy.change_y = random.uniform(*ENEMY_STATS[type]["velocity_y"])
         enemy.type = type
         enemy.health = ENEMY_STATS[type]["health"]
+        enemy.strength = 1 # Dictates how much damage this enemy does when colliding with player
         self.enemy_list.append(enemy)
 
     # Spawns a new obstacle of the given type (see OBSTACLE_STATS above)
@@ -243,6 +328,7 @@ class SpaceGame(arcade.Window):
         obstacle.change_angle = random.uniform(*OBSTACLE_STATS[type]["velocity_rotation"])
         obstacle.type = type
         obstacle.health = OBSTACLE_STATS[type]["health"]
+        obstacle.strength = OBSTACLE_STATS[type]["strength"]
         self.obstacle_list.append(obstacle)
 
     # Spawns a new collectable of the given type (see COLLECTABLE_STATS above)
@@ -254,6 +340,22 @@ class SpaceGame(arcade.Window):
         collectable.change_y = random.uniform(*COLLECTABLE_STATS[type]["velocity_y"])
         collectable.type = type
         self.collectable_list.append(collectable)
+
+    # Spawns a new bullet of the given type (see BULLET_STATS above)
+    def spawn_bullet(self, type, x, y):
+        bullet = arcade.Sprite(":resources:images/space_shooter/laserRed01.png", 0.8)
+        bullet.center_x = x
+        bullet.center_y = y
+        bullet.change_x = random.uniform(*BULLET_STATS[type]["velocity_x"])
+        bullet.change_y = random.uniform(*BULLET_STATS[type]["velocity_y"])
+        bullet.friendly = BULLET_STATS[type]["friendly"]
+        bullet.strength = 1
+        self.bullet_list.append(bullet)
+
+    # Applies collectable effects to given player
+    def collect_collectable(self, player, type):
+        if type == "health_small":
+            player.health += 1
 
 def main():
     game = SpaceGame()
