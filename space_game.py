@@ -99,6 +99,7 @@ class SpaceGame(arcade.Window):
         self.player = arcade.Sprite(":resources:images/space_shooter/playerShip1_orange.png", 0.8)
         self.player.center_x = SCREEN_WIDTH // 2
         self.player.center_y = 50
+        self.player.health = 100
         self.player_list.append(self.player)
 
         # Spawns some objects for testing purposes
@@ -119,6 +120,9 @@ class SpaceGame(arcade.Window):
         # This will display the score and text for our game
         arcade.draw_text(f"Score: {self.score}", 10, SCREEN_HEIGHT - 50, arcade.color.WHITE, 20)
         arcade.draw_text(f"Wave: {self.wave}", SCREEN_WIDTH - 130, SCREEN_HEIGHT - 50, arcade.color.WHITE, 20)
+
+        # Debug info
+        arcade.draw_text(f"Health: {self.player.health}", 10, 20)
 
     def on_key_press(self, key, modifiers):
         if key == arcade.key.LEFT:
@@ -183,6 +187,15 @@ class SpaceGame(arcade.Window):
         for collectable in self.collectable_list:
             if collectable.top < 0:
                 collectable.remove_from_sprite_lists()
+
+        # Check for collision
+        for player in self.player_list:
+            player_enemy_collision = arcade.check_for_collision_with_list(
+                player, self.enemy_list
+            )
+            for enemy in player_enemy_collision:
+                player.health -= enemy.strength
+                enemy.remove_from_sprite_lists()
     
     #Updates button press on release so that we dont continue moving
     def on_key_release(self, key, modifiers):
@@ -231,6 +244,7 @@ class SpaceGame(arcade.Window):
         enemy.change_y = random.uniform(*ENEMY_STATS[type]["velocity_y"])
         enemy.type = type
         enemy.health = ENEMY_STATS[type]["health"]
+        enemy.strength = 1 # Dictates how much damage this enemy does when colliding with player
         self.enemy_list.append(enemy)
 
     # Spawns a new obstacle of the given type (see OBSTACLE_STATS above)
