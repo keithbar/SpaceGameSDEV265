@@ -128,6 +128,15 @@ class SpaceGameView(arcade.View):
         self.bullet_list = None
         self.obstacle_list = None
         self.collectable_list = None
+
+        self.enemy_spawn_timer = 0            #TMJ These are the count down timers till a new set of enenmies will spawn 
+        self.enemy_spawn_interval = 1.5       #TMJ
+
+        self.obstacle_spawn_timer = 0         #TMJ These are the count down timers till a new set of obstacles will spawn 
+        self.obstacle_spawn_interval = 1      #TMJ
+
+        self.collectable_spawn_timer = 0      #TMJ These are the count down timers till a new set of obstacles will spawn 
+        self.collectable_spawn_interval = 1.5 #TMJ
         
         #This is for the enemies when implamented 
         self.enemy_list = None
@@ -234,6 +243,24 @@ class SpaceGameView(arcade.View):
 
         # Check for collision between entities
         self.check_collision()
+
+        self.enemy_spawn_timer += delta_time                        #TMJ This is where the timers are compared that will spawn more enemies 
+        if self.enemy_spawn_timer >= self.enemy_spawn_interval:     #TMJ
+            enemy_type = random.choice(list(ENEMY_STATS.keys()))    #TMJ
+            self.spawn_enemy(enemy_type)                            #TMJ
+            self.enemy_spawn_timer = 0                              #TMJ
+
+        self.obstacle_spawn_timer += delta_time                         #TMJ This is where the timers are compared that will spawn more enemies 
+        if self.obstacle_spawn_timer >= self.obstacle_spawn_interval:   #TMJ
+            obstacle_type = random.choice(list(OBSTACLE_STATS.keys()))  #TMJ
+            self.spawn_obstacle(obstacle_type)                          #TMJ
+            self.obstacle_spawn_timer = 0                               #TMJ
+
+        self.collectable_spawn_timer += delta_time                            #TMJ This is where the timers are compared that will spawn more collectables 
+        if self.collectable_spawn_timer >= self.collectable_spawn_interval:   #TMJ
+            collectable_type = random.choice(list(COLLECTABLE_STATS.keys()))  #TMJ
+            self.spawn_collectable(collectable_type)                          #TMJ
+            self.collectable_spawn_timer = 0   
     
     #Updates button press on release so that we dont continue moving
     def on_key_release(self, key, modifiers):
