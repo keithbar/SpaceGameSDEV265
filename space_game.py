@@ -78,119 +78,15 @@ BULLET_STATS = {
     "player_basic": { "velocity_x": (0, 0), "velocity_y": (bulletSpeed, bulletSpeed), "friendly": True},
     "enemy_basic": { "velocity_x": (0, 0), "velocity_y": (-3, -1), "friendly": False}
 }
-        
-# Class for the main game loop, extends Arcade's Window class
-class SpaceGame(arcade.Window):
+
+# An Arcade Window that will be set to display one of the following Views:
+# SpaceGameView: The main gameplay
+# TitleView: The title screen
+# GameOverView: The game over screen
+class SpaceGameWindow(arcade.Window):
     def __init__(self):
         # Initialize the window
         super().__init__(WINDOW_DEFAULT_WIDTH, WINDOW_DEFAULT_HEIGHT, WINDOW_TITLE, resizable=True)
-        self.player = None
-        self.player_list = None
-        self.bullet_list = None
-        self.obstacle_list = None
-        self.collectable_list = None
-        
-        #This is for the enemies when implamented 
-        self.enemy_list = None
-        self.enemy_direction = 1
-        
-        #initializes our score and sets us up to implament the game over when you lose and add new waves in the future
-        self.score = 0  
-        self.game_over = False  
-        self.wave = 1  
-
-    def setup(self):
-        self.player_list = arcade.SpriteList()
-        self.bullet_list = arcade.SpriteList()
-        self.enemy_list = arcade.SpriteList()
-        self.collectable_list = arcade.SpriteList()
-        self.obstacle_list = arcade.SpriteList()
-        self.score = 0  
-        self.game_over = False  
-        self.wave = 1  
-         
-        # This is our player I tried to find different sprites but this is what I have for now 
-        self.player = arcade.Sprite(":resources:images/space_shooter/playerShip1_orange.png", 0.8)
-        self.player.center_x = SCREEN_WIDTH // 2
-        self.player.center_y = 50
-        self.player.health = 100
-        self.player_list.append(self.player)
-
-        # Spawns some objects for testing purposes
-        for _ in range(5):
-            self.spawn_enemy("basic_straight")
-            self.spawn_obstacle("small")
-            self.spawn_collectable("health_small")
-        self.spawn_bullet("enemy_basic", 1000, 1080)
-        
-    # Drawing method that is called on every frame
-    def on_draw(self):
-        arcade.start_render()
-        self.player_list.draw()
-        self.bullet_list.draw()
-        self.enemy_list.draw()
-        self.obstacle_list.draw()
-        self.collectable_list.draw()
-        
-        # This will display the score and text for our game
-        arcade.draw_text(f"Score: {self.score}", 10, SCREEN_HEIGHT - 50, arcade.color.WHITE, 20)
-        arcade.draw_text(f"Wave: {self.wave}", SCREEN_WIDTH - 130, SCREEN_HEIGHT - 50, arcade.color.WHITE, 20)
-
-        # Debug info
-        arcade.draw_text(f"Health: {self.player.health}", 10, 20)
-
-    def on_key_press(self, key, modifiers):
-        if key == arcade.key.LEFT:
-            self.player.change_x = -playerSpeed
-
-        elif key == arcade.key.RIGHT:
-            self.player.change_x = playerSpeed
-
-        elif key == arcade.key.UP:
-            self.player.change_y = playerSpeed
-
-        elif key == arcade.key.DOWN:
-            self.player.change_y = -playerSpeed
-        
-        #This is the projectile I found that looked the best so far however we can change for whatever everyone likes 
-        elif key == arcade.key.SPACE:
-            self.spawn_bullet("player_basic", self.player.center_x, self.player.center_y + 20)
-
-    def update(self, delta_time):
-        if self.game_over:
-            return  
-
-        self.player_list.update()
-        self.bullet_list.update()
-        self.enemy_list.update()
-        self.obstacle_list.update()
-        self.collectable_list.update()
-
-        # This is what keeps our ship confined to our screen
-        if self.player.left < 0:
-            self.player.left = 0
-
-        elif self.player.right > SCREEN_WIDTH:
-            self.player.right = SCREEN_WIDTH
-
-        if self.player.bottom < 0:
-            self.player.bottom = 0
-
-        elif self.player.top > SCREEN_HEIGHT:
-            self.player.top = SCREEN_HEIGHT
-
-        # Remove entities that have moved off screen
-        self.cull_off_screen()
-
-        # Check for collision between entities
-        self.check_collision()
-    
-    #Updates button press on release so that we dont continue moving
-    def on_key_release(self, key, modifiers):
-        if key in [arcade.key.LEFT, arcade.key.RIGHT]:
-            self.player.change_x = 0
-        elif key in [arcade.key.UP, arcade.key.DOWN]:
-            self.player.change_y = 0
 
     # Scale the image to the size of the window, maintaining aspect ratio.
     # There may be a simpler way to achieve this result using Arcade's
@@ -222,6 +118,188 @@ class SpaceGame(arcade.Window):
             viewport_width = height * screen_aspect_ratio
             viewport_height = height
             self.ctx.viewport = (width - viewport_width) / 2, 0, viewport_width, viewport_height
+        
+# Class for the main game loop, extends Arcade's View class
+class SpaceGameView(arcade.View):
+    def __init__(self):
+        super().__init__()
+        self.player = None
+        self.player_list = None
+        self.bullet_list = None
+        self.obstacle_list = None
+        self.collectable_list = None
+
+        self.enemy_spawn_timer = 0            #TMJ These are the count down timers till a new set of enenmies will spawn 
+        self.enemy_spawn_interval = 1.5       #TMJ
+
+        self.obstacle_spawn_timer = 0         #TMJ These are the count down timers till a new set of obstacles will spawn 
+        self.obstacle_spawn_interval = 1      #TMJ
+
+        self.collectable_spawn_timer = 0      #TMJ These are the count down timers till a new set of obstacles will spawn 
+        self.collectable_spawn_interval = 1.5 #TMJ
+        
+        #This is for the enemies when implamented 
+        self.enemy_list = None
+        self.enemy_direction = 1
+        
+        #initializes our score and sets us up to implament the game over when you lose and add new waves in the future
+        self.score = 0  
+        self.game_over = False  
+        self.wave = 1
+        self.paused = False
+
+    def setup(self):
+        self.player_list = arcade.SpriteList()
+        self.bullet_list = arcade.SpriteList()
+        self.enemy_list = arcade.SpriteList()
+        self.collectable_list = arcade.SpriteList()
+        self.obstacle_list = arcade.SpriteList()
+        self.score = 0  
+        self.game_over = False  
+        self.wave = 1
+        self.paused = False
+         
+        # This is our player I tried to find different sprites but this is what I have for now 
+        self.player = arcade.Sprite(":resources:images/space_shooter/playerShip1_orange.png", 0.8)
+        self.player.center_x = SCREEN_WIDTH // 2
+        self.player.center_y = 50
+        self.player.moving_left = False
+        self.player.moving_right = False
+        self.player.moving_up = False
+        self.player.moving_down = False
+        self.player.health = 1
+        self.player_list.append(self.player)
+
+        # Spawns some objects for testing purposes
+        for _ in range(5):
+            self.spawn_enemy("basic_straight")
+            self.spawn_obstacle("small")
+            self.spawn_collectable("health_small")
+        self.spawn_bullet("enemy_basic", 1000, 1080)
+        
+    # Drawing method that is called on every frame
+    def on_draw(self):
+        arcade.start_render()
+        self.player_list.draw()
+        self.bullet_list.draw()
+        self.enemy_list.draw()
+        self.obstacle_list.draw()
+        self.collectable_list.draw()
+        
+        # This will display the score and text for our game
+        arcade.draw_text(f"Score: {self.score}", 10, SCREEN_HEIGHT - 50, arcade.color.WHITE, 20)
+        arcade.draw_text(f"Wave: {self.wave}", SCREEN_WIDTH - 130, SCREEN_HEIGHT - 50, arcade.color.WHITE, 20)
+
+        # Debug info
+        arcade.draw_text(f"Health: {self.player.health}", 10, 20)
+
+        # Draw the pause overlay
+        if self.paused:
+            # These draw functions accept colors in RGB or RGBA format. The built in colors,
+            # like arcade.color.BLACK, are RGB format. Adding (200,) adds an alpha value to
+            # make it RGBA, allowing for transparency.
+            arcade.draw_lrtb_rectangle_filled(0, SCREEN_WIDTH, SCREEN_HEIGHT, 0, arcade.color.BLACK + (200,))
+            arcade.draw_text("PAUSED", 0, SCREEN_HEIGHT / 2, font_size = 30,
+                width = SCREEN_WIDTH, align = "center")
+
+    def on_key_press(self, key, modifiers):
+        if key == arcade.key.LEFT:
+            self.player.moving_left = True
+
+        elif key == arcade.key.RIGHT:
+            self.player.moving_right = True
+
+        elif key == arcade.key.UP:
+            self.player.moving_up = True
+
+        elif key == arcade.key.DOWN:
+            self.player.moving_down = True
+        
+        #This is the projectile I found that looked the best so far however we can change for whatever everyone likes 
+        elif key == arcade.key.SPACE and not self.paused:
+            self.spawn_bullet("player_basic", self.player.center_x, self.player.center_y + 20)
+
+        elif key == arcade.key.ENTER:
+            self.paused = not self.paused
+
+    def update(self, delta_time):
+        if self.player.health <= 0:
+            game_over = GameOverView()
+            game_over.setup(self.score)
+            self.window.show_view(game_over)
+            return
+        
+        if self.paused:
+            return
+        
+        # Update the player's movement
+        if self.player.moving_left and not self.player.moving_right:
+            self.player.change_x = -playerSpeed
+        elif self.player.moving_right and not self.player.moving_left:
+            self.player.change_x = playerSpeed
+        else:
+            self.player.change_x = 0
+        
+        if self.player.moving_up and not self.player.moving_down:
+            self.player.change_y = playerSpeed
+        elif self.player.moving_down and not self.player.moving_up:
+            self.player.change_y = -playerSpeed
+        else:
+            self.player.change_y = 0
+
+        self.player_list.update()
+        self.bullet_list.update()
+        self.enemy_list.update()
+        self.obstacle_list.update()
+        self.collectable_list.update()
+
+        # This is what keeps our ship confined to our screen
+        if self.player.left < 0:
+            self.player.left = 0
+
+        elif self.player.right > SCREEN_WIDTH:
+            self.player.right = SCREEN_WIDTH
+
+        if self.player.bottom < 0:
+            self.player.bottom = 0
+
+        elif self.player.top > SCREEN_HEIGHT:
+            self.player.top = SCREEN_HEIGHT
+
+        # Remove entities that have moved off screen
+        self.cull_off_screen()
+
+        # Check for collision between entities
+        self.check_collision()
+
+        self.enemy_spawn_timer += delta_time                        #TMJ This is where the timers are compared that will spawn more enemies 
+        if self.enemy_spawn_timer >= self.enemy_spawn_interval:     #TMJ
+            enemy_type = random.choice(list(ENEMY_STATS.keys()))    #TMJ
+            self.spawn_enemy(enemy_type)                            #TMJ
+            self.enemy_spawn_timer = 0                              #TMJ
+
+        self.obstacle_spawn_timer += delta_time                         #TMJ This is where the timers are compared that will spawn more enemies 
+        if self.obstacle_spawn_timer >= self.obstacle_spawn_interval:   #TMJ
+            obstacle_type = random.choice(list(OBSTACLE_STATS.keys()))  #TMJ
+            self.spawn_obstacle(obstacle_type)                          #TMJ
+            self.obstacle_spawn_timer = 0                               #TMJ
+
+        self.collectable_spawn_timer += delta_time                            #TMJ This is where the timers are compared that will spawn more collectables 
+        if self.collectable_spawn_timer >= self.collectable_spawn_interval:   #TMJ
+            collectable_type = random.choice(list(COLLECTABLE_STATS.keys()))  #TMJ
+            self.spawn_collectable(collectable_type)                          #TMJ
+            self.collectable_spawn_timer = 0   
+    
+    #Updates button press on release so that we dont continue moving
+    def on_key_release(self, key, modifiers):
+        if key == arcade.key.LEFT:
+            self.player.moving_left = False
+        elif key == arcade.key.RIGHT:
+            self.player.moving_right = False
+        elif key == arcade.key.UP:
+            self.player.moving_up = False
+        elif key == arcade.key.DOWN:
+            self.player.moving_down = False
 
     def cull_off_screen(self):
         # Removes the bullets that are off screen 
@@ -244,7 +322,6 @@ class SpaceGame(arcade.Window):
             if collectable.top < 0:
                 collectable.remove_from_sprite_lists()
 
-    #
     def check_collision(self):
         for player in self.player_list:
 
@@ -357,9 +434,119 @@ class SpaceGame(arcade.Window):
         if type == "health_small":
             player.health += 1
 
+START_GAME = 0
+HIGH_SCORE = 1
+SETTINGS = 2
+QUIT_GAME = 3
+
+class TitleView(arcade.View):
+    def __init__(self):
+        super().__init__()
+        self.selected_action = START_GAME
+
+    # setup is currently redundant, left it here in case we want to
+    # do more with it in the future
+    def setup(self):
+        self.selected_action = START_GAME
+
+    def on_draw(self):
+        arcade.start_render()
+
+        arcade.draw_text("SDEV 265\nSPACE GAME", 0, SCREEN_HEIGHT * 0.7,
+            font_size = 50, width = SCREEN_WIDTH, align = "center")
+        
+        # Values to make changing text layout easier
+        option_font_size = 25
+        option_line_height = 35
+        option_y_start = SCREEN_HEIGHT * 0.4
+
+        text_start_game = arcade.Text(" Start Game ", 0, option_y_start, 
+            font_size = option_font_size, width = SCREEN_WIDTH, align = "center")
+        text_start_game.draw()
+
+        text_high_score = arcade.Text(" High Scores ", 0, option_y_start - option_line_height, 
+            font_size = option_font_size, width = SCREEN_WIDTH, align = "center")
+        text_high_score.draw()
+
+        text_settings = arcade.Text(" Settings ", 0, option_y_start - option_line_height * 2, 
+            font_size = option_font_size, width = SCREEN_WIDTH, align = "center")
+        text_settings.draw()
+
+        text_quit = arcade.Text(" Quit ", 0, option_y_start - option_line_height * 3, 
+            font_size = option_font_size, width = SCREEN_WIDTH, align = "center")
+        text_quit.draw()
+        
+        if self.selected_action == START_GAME:
+            selected_text = text_start_game
+        elif self.selected_action == HIGH_SCORE:
+            selected_text = text_high_score
+        elif self.selected_action == SETTINGS:
+            selected_text = text_settings
+        else:
+            selected_text = text_quit
+
+        arrow_size = 25
+        text_width = selected_text.content_width
+        arrow_left_x = SCREEN_WIDTH / 2 - text_width / 2 - arrow_size
+        arrow_right_x = SCREEN_WIDTH / 2 + text_width / 2 + arrow_size
+        arrow_y = selected_text.y
+        arcade.draw_triangle_filled(
+            arrow_left_x, arrow_y, 
+            arrow_left_x, arrow_y + arrow_size,
+            arrow_left_x + arrow_size, arrow_y + arrow_size / 2,
+            arcade.color.WHITE
+        )
+        arcade.draw_triangle_filled(
+            arrow_right_x, arrow_y,
+            arrow_right_x, arrow_y + arrow_size,
+            arrow_right_x - arrow_size, arrow_y + arrow_size / 2,
+            arcade.color.WHITE
+        )
+
+    def on_key_press(self, key, modifiers):
+        if key == arcade.key.DOWN:
+            self.selected_action += 1
+            if self.selected_action > QUIT_GAME:
+                self.selected_action = START_GAME
+
+        if key == arcade.key.UP:
+            self.selected_action -= 1
+            if self.selected_action < START_GAME:
+                self.selected_action = QUIT_GAME
+
+    def on_key_release(self, key, modifiers):
+        if key == arcade.key.ENTER:
+            if self.selected_action == START_GAME:
+                game = SpaceGameView()
+                game.setup()
+                self.window.show_view(game)
+
+class GameOverView(arcade.View):
+    def __init__(self):
+        super().__init__()
+        self.score = 0
+
+    def setup(self, score):
+        self.score = score
+
+    def on_draw(self):
+        arcade.start_render()
+        arcade.draw_text("GAME OVER", 0, SCREEN_HEIGHT * 0.7,
+            font_size = 50, width = SCREEN_WIDTH, align = "center")
+        arcade.draw_text(f"Your score was {self.score}\nPress Enter to return to title screen.", 
+            0, SCREEN_HEIGHT * 0.4, font_size = 25, width = SCREEN_WIDTH, align = "center")
+        
+    def on_key_release(self, key, modifiers):
+        if key == arcade.key.ENTER:
+            title = TitleView()
+            title.setup()
+            self.window.show_view(title)
+
 def main():
-    game = SpaceGame()
-    game.setup()
+    window = SpaceGameWindow()
+    title = TitleView()
+    title.setup()
+    window.show_view(title)
     arcade.run()
 
 if __name__ == "__main__":
