@@ -152,7 +152,7 @@ class SpaceGameView(arcade.View):
         self.player = arcade.Sprite(":resources:images/space_shooter/playerShip1_orange.png", 0.8)
         self.player.center_x = SCREEN_WIDTH // 2
         self.player.center_y = 50
-        self.player.health = 100
+        self.player.health = 1
         self.player_list.append(self.player)
 
         # Spawns some objects for testing purposes
@@ -196,7 +196,10 @@ class SpaceGameView(arcade.View):
             self.spawn_bullet("player_basic", self.player.center_x, self.player.center_y + 20)
 
     def update(self, delta_time):
-        if self.game_over:
+        if self.player.health <= 0:
+            game_over = GameOverView()
+            game_over.setup(self.score)
+            self.window.show_view(game_over)
             return  
 
         self.player_list.update()
@@ -373,7 +376,10 @@ QUIT_GAME = 3
 class TitleView(arcade.View):
     def __init__(self):
         super().__init__()
+        self.selected_action = START_GAME
 
+    # setup is currently redundant, left it here in case we want to
+    # do more with it in the future
     def setup(self):
         self.selected_action = START_GAME
 
@@ -449,10 +455,29 @@ class TitleView(arcade.View):
                 game.setup()
                 self.window.show_view(game)
 
+class GameOverView(arcade.View):
+    def __init__(self):
+        super().__init__()
+        self.score = 0
+
+    def setup(self, score):
+        self.score = score
+
+    def on_draw(self):
+        arcade.start_render()
+        arcade.draw_text("GAME OVER", 0, SCREEN_HEIGHT * 0.7,
+            font_size = 50, width = SCREEN_WIDTH, align = "center")
+        arcade.draw_text(f"Your score was {self.score}\nPress Enter to return to title screen.", 
+            0, SCREEN_HEIGHT * 0.4, font_size = 25, width = SCREEN_WIDTH, align = "center")
+        
+    def on_key_release(self, key, modifiers):
+        if key == arcade.key.ENTER:
+            title = TitleView()
+            title.setup()
+            self.window.show_view(title)
+
 def main():
     window = SpaceGameWindow()
-    #game = SpaceGameView()
-    #game.setup()
     title = TitleView()
     title.setup()
     window.show_view(title)
