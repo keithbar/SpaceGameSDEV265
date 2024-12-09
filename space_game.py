@@ -163,6 +163,10 @@ class SpaceGameView(arcade.View):
         self.player = arcade.Sprite(":resources:images/space_shooter/playerShip1_orange.png", 0.8)
         self.player.center_x = SCREEN_WIDTH // 2
         self.player.center_y = 50
+        self.player.moving_left = False
+        self.player.moving_right = False
+        self.player.moving_up = False
+        self.player.moving_down = False
         self.player.health = 1
         self.player_list.append(self.player)
 
@@ -190,24 +194,24 @@ class SpaceGameView(arcade.View):
         arcade.draw_text(f"Health: {self.player.health}", 10, 20)
 
     def on_key_press(self, key, modifiers):
-        if self.paused:
-            return 
-        
         if key == arcade.key.LEFT:
-            self.player.change_x = -playerSpeed
+            self.player.moving_left = True
 
         elif key == arcade.key.RIGHT:
-            self.player.change_x = playerSpeed
+            self.player.moving_right = True
 
         elif key == arcade.key.UP:
-            self.player.change_y = playerSpeed
+            self.player.moving_up = True
 
         elif key == arcade.key.DOWN:
-            self.player.change_y = -playerSpeed
+            self.player.moving_down = True
         
         #This is the projectile I found that looked the best so far however we can change for whatever everyone likes 
-        elif key == arcade.key.SPACE:
+        elif key == arcade.key.SPACE and not self.paused:
             self.spawn_bullet("player_basic", self.player.center_x, self.player.center_y + 20)
+
+        elif key == arcade.key.ENTER:
+            self.paused = not self.paused
 
     def update(self, delta_time):
         if self.player.health <= 0:
@@ -218,6 +222,21 @@ class SpaceGameView(arcade.View):
         
         if self.paused:
             return
+        
+        # Update the player's movement
+        if self.player.moving_left and not self.player.moving_right:
+            self.player.change_x = -playerSpeed
+        elif self.player.moving_right and not self.player.moving_left:
+            self.player.change_x = playerSpeed
+        else:
+            self.player.change_x = 0
+        
+        if self.player.moving_up and not self.player.moving_down:
+            self.player.change_y = playerSpeed
+        elif self.player.moving_down and not self.player.moving_up:
+            self.player.change_y = -playerSpeed
+        else:
+            self.player.change_y = 0
 
         self.player_list.update()
         self.bullet_list.update()
@@ -264,17 +283,14 @@ class SpaceGameView(arcade.View):
     
     #Updates button press on release so that we dont continue moving
     def on_key_release(self, key, modifiers):
-        if self.paused:
-            if key == arcade.key.ENTER:
-                self.paused = False
-            return
-
-        if key in [arcade.key.LEFT, arcade.key.RIGHT]:
-            self.player.change_x = 0
-        elif key in [arcade.key.UP, arcade.key.DOWN]:
-            self.player.change_y = 0
-        elif key == arcade.key.ENTER:
-            self.paused = True
+        if key == arcade.key.LEFT:
+            self.player.moving_left = False
+        elif key == arcade.key.RIGHT:
+            self.player.moving_right = False
+        elif key == arcade.key.UP:
+            self.player.moving_up = False
+        elif key == arcade.key.DOWN:
+            self.player.moving_down = False
 
     def cull_off_screen(self):
         # Removes the bullets that are off screen 
