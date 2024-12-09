@@ -136,7 +136,8 @@ class SpaceGameView(arcade.View):
         #initializes our score and sets us up to implament the game over when you lose and add new waves in the future
         self.score = 0  
         self.game_over = False  
-        self.wave = 1  
+        self.wave = 1
+        self.paused = False
 
     def setup(self):
         self.player_list = arcade.SpriteList()
@@ -146,7 +147,8 @@ class SpaceGameView(arcade.View):
         self.obstacle_list = arcade.SpriteList()
         self.score = 0  
         self.game_over = False  
-        self.wave = 1  
+        self.wave = 1
+        self.paused = False
          
         # This is our player I tried to find different sprites but this is what I have for now 
         self.player = arcade.Sprite(":resources:images/space_shooter/playerShip1_orange.png", 0.8)
@@ -179,6 +181,9 @@ class SpaceGameView(arcade.View):
         arcade.draw_text(f"Health: {self.player.health}", 10, 20)
 
     def on_key_press(self, key, modifiers):
+        if self.paused:
+            return 
+        
         if key == arcade.key.LEFT:
             self.player.change_x = -playerSpeed
 
@@ -200,7 +205,10 @@ class SpaceGameView(arcade.View):
             game_over = GameOverView()
             game_over.setup(self.score)
             self.window.show_view(game_over)
-            return  
+            return
+        
+        if self.paused:
+            return
 
         self.player_list.update()
         self.bullet_list.update()
@@ -229,10 +237,17 @@ class SpaceGameView(arcade.View):
     
     #Updates button press on release so that we dont continue moving
     def on_key_release(self, key, modifiers):
+        if self.paused:
+            if key == arcade.key.ENTER:
+                self.paused = False
+            return
+
         if key in [arcade.key.LEFT, arcade.key.RIGHT]:
             self.player.change_x = 0
         elif key in [arcade.key.UP, arcade.key.DOWN]:
             self.player.change_y = 0
+        elif key == arcade.key.ENTER:
+            self.paused = True
 
     def cull_off_screen(self):
         # Removes the bullets that are off screen 
