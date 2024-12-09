@@ -193,6 +193,15 @@ class SpaceGameView(arcade.View):
         # Debug info
         arcade.draw_text(f"Health: {self.player.health}", 10, 20)
 
+        # Draw the pause overlay
+        if self.paused:
+            # These draw functions accept colors in RGB or RGBA format. The built in colors,
+            # like arcade.color.BLACK, are RGB format. Adding (200,) adds an alpha value to
+            # make it RGBA, allowing for transparency.
+            arcade.draw_lrtb_rectangle_filled(0, SCREEN_WIDTH, SCREEN_HEIGHT, 0, arcade.color.BLACK + (200,))
+            arcade.draw_text("PAUSED", 0, SCREEN_HEIGHT / 2, font_size = 30,
+                width = SCREEN_WIDTH, align = "center")
+
     def on_key_press(self, key, modifiers):
         if key == arcade.key.LEFT:
             self.player.moving_left = True
@@ -313,7 +322,6 @@ class SpaceGameView(arcade.View):
             if collectable.top < 0:
                 collectable.remove_from_sprite_lists()
 
-    #
     def check_collision(self):
         for player in self.player_list:
 
