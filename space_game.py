@@ -14,6 +14,11 @@ WINDOW_TITLE = "SDEV 265 Space Game"
 WINDOW_DEFAULT_WIDTH = 1280
 WINDOW_DEFAULT_HEIGHT = 720
 
+# Background star speeds
+# STARS_FAR_VELOCITY = -3
+# STARS_MIDDLE_VELOCITY = -5
+# STARS_NEAR_VELOCITY = -7
+
 # Enemy types and their stats
 ENEMY_STATS = {
     "basic_straight": { "health": 1, "velocity_x": (0, 0), "velocity_y": (-3, -1) },
@@ -78,6 +83,13 @@ BULLET_STATS = {
     "player_basic": { "velocity_x": (0, 0), "velocity_y": (bulletSpeed, bulletSpeed), "friendly": True},
     "enemy_basic": { "velocity_x": (0, 0), "velocity_y": (-3, -1), "friendly": False}
 }
+
+# Star properties; sizes must be integers
+STAR_SIZE_MIN = 1
+STAR_SIZE_MAX = 6
+STAR_SPEED_MIN = -1
+STAR_SPEED_MAX = -5
+NUM_STARS = 250
 
 # An Arcade Window that will be set to display one of the following Views:
 # SpaceGameView: The main gameplay
@@ -154,6 +166,7 @@ class SpaceGameView(arcade.View):
         self.enemy_list = arcade.SpriteList()
         self.collectable_list = arcade.SpriteList()
         self.obstacle_list = arcade.SpriteList()
+        self.star_list = arcade.SpriteList()
         self.score = 0  
         self.game_over = False  
         self.wave = 1
@@ -170,6 +183,10 @@ class SpaceGameView(arcade.View):
         self.player.health = 1
         self.player_list.append(self.player)
 
+        # Spawn the initial stars
+        for _ in range(NUM_STARS):
+            self.spawn_star(True)
+
         # Spawns some objects for testing purposes
         for _ in range(5):
             self.spawn_enemy("basic_straight")
@@ -180,6 +197,8 @@ class SpaceGameView(arcade.View):
     # Drawing method that is called on every frame
     def on_draw(self):
         arcade.start_render()
+
+        self.star_list.draw()
         self.player_list.draw()
         self.bullet_list.draw()
         self.enemy_list.draw()
@@ -231,7 +250,7 @@ class SpaceGameView(arcade.View):
         
         if self.paused:
             return
-        
+
         # Update the player's movement
         if self.player.moving_left and not self.player.moving_right:
             self.player.change_x = -playerSpeed
@@ -247,6 +266,7 @@ class SpaceGameView(arcade.View):
         else:
             self.player.change_y = 0
 
+        self.star_list.update()
         self.player_list.update()
         self.bullet_list.update()
         self.enemy_list.update()
@@ -321,6 +341,12 @@ class SpaceGameView(arcade.View):
         for collectable in self.collectable_list:
             if collectable.top < 0:
                 collectable.remove_from_sprite_lists()
+
+        # Removes stars that are off screen and spawns new ones
+        for star in self.star_list:
+            if star.center_y < -5:
+                star.remove_from_sprite_lists()
+                self.spawn_star()
 
     def check_collision(self):
         for player in self.player_list:
@@ -428,6 +454,35 @@ class SpaceGameView(arcade.View):
         bullet.friendly = BULLET_STATS[type]["friendly"]
         bullet.strength = 1
         self.bullet_list.append(bullet)
+
+    # Spawns a new background star. If part of the initial batch of stars
+    # spawned at beginning of game, it will be place on the screen randomly.
+    # Otherwise, it will be placed at the top of the screen.
+    def spawn_star(self, initial = False):
+        star_size = random.randint(STAR_SIZE_MIN, STAR_SIZE_MAX)
+
+        color_random = random.uniform(0, 100)
+        if color_random < 70:
+            star_color = arcade.color.WHITE
+        elif color_random < 80:
+            star_color = arcade.color.WHITE_SMOKE
+        elif color_random < 90:
+            star_color = arcade.color.LIGHT_BLUE
+        elif color_random < 95:
+            star_color = arcade.color.PASTEL_ORANGE
+        else:
+            star_color = arcade.color.RED_ORANGE
+
+        star = arcade.SpriteCircle(star_size, star_color, True)
+
+        if initial:
+            star.center_y = random.uniform(0, SCREEN_HEIGHT)
+        else:
+            star.center_y = SCREEN_HEIGHT + 5
+
+        star.center_x = random.uniform(0, SCREEN_WIDTH)
+        star.change_y = random.uniform(STAR_SPEED_MAX, STAR_SPEED_MIN)
+        self.star_list.append(star)
 
     # Applies collectable effects to given player
     def collect_collectable(self, player, type):
