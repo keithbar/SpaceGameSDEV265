@@ -111,6 +111,10 @@ STAR_SPEED_MIN = -1
 STAR_SPEED_MAX = -5
 NUM_STARS = 250
 
+# Kill counts required to complete each stage
+KILL_COUNT_THRESHOLDS = [ 1, 2 ]
+MAX_STAGE = 3
+
 # An Arcade Window that will be set to display one of the following Views:
 # SpaceGameView: The main gameplay
 # TitleView: The title screen
@@ -175,9 +179,10 @@ class SpaceGameView(arcade.View):
         self.enemy_direction = 1
         
         #initializes our score and sets us up to implament the game over when you lose and add new waves in the future
-        self.score = 0  
+        self.score = 0
+        self.kills = 0
         self.game_over = False  
-        self.wave = 1
+        self.stage = 1
         self.paused = False
 
     def setup(self):
@@ -187,9 +192,10 @@ class SpaceGameView(arcade.View):
         self.collectable_list = arcade.SpriteList()
         self.obstacle_list = arcade.SpriteList()
         self.star_list = arcade.SpriteList()
-        self.score = 0  
+        self.score = 0
+        self.kills = 0
         self.game_over = False  
-        self.wave = 1
+        self.stage = 1
         self.paused = False
          
         # This is our player I tried to find different sprites but this is what I have for now 
@@ -227,7 +233,7 @@ class SpaceGameView(arcade.View):
         
         # This will display the score and text for our game
         arcade.draw_text(f"Score: {self.score}", 10, SCREEN_HEIGHT - 50, arcade.color.WHITE, 20)
-        arcade.draw_text(f"Wave: {self.wave}", SCREEN_WIDTH - 130, SCREEN_HEIGHT - 50, arcade.color.WHITE, 20)
+        arcade.draw_text(f"Stage: {self.stage}", SCREEN_WIDTH - 130, SCREEN_HEIGHT - 50, arcade.color.WHITE, 20)
 
         # Debug info
         arcade.draw_text(f"Health: {self.player.health}", 10, 20)
@@ -312,23 +318,8 @@ class SpaceGameView(arcade.View):
         # Check for collision between entities
         self.check_collision()
 
-        self.enemy_spawn_timer += delta_time                        #TMJ This is where the timers are compared that will spawn more enemies 
-        if self.enemy_spawn_timer >= self.enemy_spawn_interval:     #TMJ
-            enemy_type = random.choice(list(ENEMY_STATS.keys()))    #TMJ
-            self.spawn_enemy(enemy_type)                            #TMJ
-            self.enemy_spawn_timer = 0                              #TMJ
-
-        self.obstacle_spawn_timer += delta_time                         #TMJ This is where the timers are compared that will spawn more enemies 
-        if self.obstacle_spawn_timer >= self.obstacle_spawn_interval:   #TMJ
-            obstacle_type = random.choice(list(OBSTACLE_STATS.keys()))  #TMJ
-            self.spawn_obstacle(obstacle_type)                          #TMJ
-            self.obstacle_spawn_timer = 0                               #TMJ
-
-        self.collectable_spawn_timer += delta_time                            #TMJ This is where the timers are compared that will spawn more collectables 
-        if self.collectable_spawn_timer >= self.collectable_spawn_interval:   #TMJ
-            collectable_type = random.choice(list(COLLECTABLE_STATS.keys()))  #TMJ
-            self.spawn_collectable(collectable_type)                          #TMJ
-            self.collectable_spawn_timer = 0   
+        # Spawn all entities
+        self.spawn_entities(delta_time)
     
     #Updates button press on release so that we dont continue moving
     def on_key_release(self, key, modifiers):
@@ -416,6 +407,10 @@ class SpaceGameView(arcade.View):
                     enemy.health -= bullet.strength
                     if enemy.health <= 0:
                         self.score += enemy.score
+                        self.kills += 1
+                        if self.stage < MAX_STAGE and \
+                            self.kills >= KILL_COUNT_THRESHOLDS[self.stage - 1]:
+                                self.stage += 1
                         enemy.remove_from_sprite_lists()
                     bullet.remove_from_sprite_lists()
                     
@@ -481,6 +476,26 @@ class SpaceGameView(arcade.View):
         bullet.friendly = BULLET_STATS[type]["friendly"]
         bullet.strength = 1
         self.bullet_list.append(bullet)
+
+    # Contains all logic for spawning entities based on stage, time passed, etc.
+    def spawn_entities(self, delta_time):
+        self.enemy_spawn_timer += delta_time                        #TMJ This is where the timers are compared that will spawn more enemies 
+        if self.enemy_spawn_timer >= self.enemy_spawn_interval:     #TMJ
+            enemy_type = random.choice(list(ENEMY_STATS.keys()))    #TMJ
+            self.spawn_enemy(enemy_type)                            #TMJ
+            self.enemy_spawn_timer = 0                              #TMJ
+
+        self.obstacle_spawn_timer += delta_time                         #TMJ This is where the timers are compared that will spawn more enemies 
+        if self.obstacle_spawn_timer >= self.obstacle_spawn_interval:   #TMJ
+            obstacle_type = random.choice(list(OBSTACLE_STATS.keys()))  #TMJ
+            self.spawn_obstacle(obstacle_type)                          #TMJ
+            self.obstacle_spawn_timer = 0                               #TMJ
+
+        self.collectable_spawn_timer += delta_time                            #TMJ This is where the timers are compared that will spawn more collectables 
+        if self.collectable_spawn_timer >= self.collectable_spawn_interval:   #TMJ
+            collectable_type = random.choice(list(COLLECTABLE_STATS.keys()))  #TMJ
+            self.spawn_collectable(collectable_type)                          #TMJ
+            self.collectable_spawn_timer = 0   
 
     # Spawns a new background star. If part of the initial batch of stars
     # spawned at beginning of game, it will be place on the screen randomly.
