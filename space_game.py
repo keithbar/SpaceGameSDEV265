@@ -21,12 +21,18 @@ WINDOW_DEFAULT_HEIGHT = 720
 
 # Enemy types and their stats
 ENEMY_STATS = {
-    "basic_straight": { "health": 1, "velocity_x": (0, 0), "velocity_y": (-3, -1) },
-    "basic_zigzag": { "health": 1, "velocity_x": (1, 3), "velocity_y": (-3, -1) },
-    "basic_wave": { "health": 1, "velocity_x": (0, 0), "velocity_y": (-3, -1) },
-    "basic_wait": { "health": 1, "velocity_x": (0, 0), "velocity_y": (-3, -1) },
-    "basic_fast": { "health": 1, "velocity_x": (0, 0), "velocity_y": (-3, -1) },
-    "basic_dodge": { "health": 1, "velocity_x": (0, 0), "velocity_y": (-3, -1) },
+    "basic_straight": 
+        { "health": 1, "velocity_x": (0, 0), "velocity_y": (-3, -1), "score": 100 },
+    "basic_zigzag": 
+        { "health": 1, "velocity_x": (1, 3), "velocity_y": (-3, -1), "score": 100 },
+    "basic_wave": 
+        { "health": 1, "velocity_x": (0, 0), "velocity_y": (-3, -1), "score": 100 },
+    "basic_wait": 
+        { "health": 1, "velocity_x": (0, 0), "velocity_y": (-3, -1), "score": 100 },
+    "basic_fast": 
+        { "health": 1, "velocity_x": (0, 0), "velocity_y": (-3, -1), "score": 100 },
+    "basic_dodge": 
+        { "health": 1, "velocity_x": (0, 0), "velocity_y": (-3, -1), "score": 100 },
 }
 
 # Obstacle types and their defaul stats
@@ -59,20 +65,34 @@ OBSTACLE_STATS = {
 
 # Collectable types and their stats
 COLLECTABLE_STATS = {
-    "attack_up": { "velocity_x": (0, 0), "velocity_y": (-3, -1) },
-    "attack_down": { "velocity_x": (0, 0), "velocity_y": (-3, -1) },
-    "defense_up": { "velocity_x": (0, 0), "velocity_y": (-3, -1) },
-    "defense_down": { "velocity_x": (0, 0), "velocity_y": (-3, -1) },
-    "health_small": { "velocity_x": (0, 0), "velocity_y": (-3, -1) },
-    "health_large": { "velocity_x": (0, 0), "velocity_y": (-3, -1) },
-    "speed_up": { "velocity_x": (0, 0), "velocity_y": (-3, -1) },
-    "speed_down": { "velocity_x": (0, 0), "velocity_y": (-3, -1) },
-    "fire_rate_up": { "velocity_x": (0, 0), "velocity_y": (-3, -1) },
-    "fire_rate_down": { "velocity_x": (0, 0), "velocity_y": (-3, -1) },
-    "bullet_speed_up": { "velocity_x": (0, 0), "velocity_y": (-3, -1) },
-    "bullet_speed_down": { "velocity_x": (0, 0), "velocity_y": (-3, -1) },
-    "destroy_all_enemies": { "velocity_x": (0, 0), "velocity_y": (-3, -1) },
-    "invincible": { "velocity_x": (0, 0), "velocity_y": (-3, -1) }
+    "attack_up": 
+        { "velocity_x": (0, 0), "velocity_y": (-3, -1), "score": 100 },
+    "attack_down": 
+        { "velocity_x": (0, 0), "velocity_y": (-3, -1), "score": 100 },
+    "defense_up": 
+        { "velocity_x": (0, 0), "velocity_y": (-3, -1), "score": 100 },
+    "defense_down": 
+        { "velocity_x": (0, 0), "velocity_y": (-3, -1), "score": 100 },
+    "health_small": 
+        { "velocity_x": (0, 0), "velocity_y": (-3, -1), "score": 100 },
+    "health_large": 
+        { "velocity_x": (0, 0), "velocity_y": (-3, -1), "score": 100 },
+    "speed_up": 
+        { "velocity_x": (0, 0), "velocity_y": (-3, -1), "score": 100 },
+    "speed_down": 
+        { "velocity_x": (0, 0), "velocity_y": (-3, -1), "score": 100 },
+    "fire_rate_up": 
+        { "velocity_x": (0, 0), "velocity_y": (-3, -1), "score": 100 },
+    "fire_rate_down": 
+        { "velocity_x": (0, 0), "velocity_y": (-3, -1), "score": 100 },
+    "bullet_speed_up": 
+        { "velocity_x": (0, 0), "velocity_y": (-3, -1), "score": 100 },
+    "bullet_speed_down": 
+        { "velocity_x": (0, 0), "velocity_y": (-3, -1), "score": 100 },
+    "destroy_all_enemies": 
+        { "velocity_x": (0, 0), "velocity_y": (-3, -1), "score": 100 },
+    "invincible": 
+        { "velocity_x": (0, 0), "velocity_y": (-3, -1), "score": 100 }
 }
 
 playerSpeed = 5
@@ -383,6 +403,7 @@ class SpaceGameView(arcade.View):
             )
             for collectable in player_collectable_collision:
                 self.collect_collectable(player, collectable.type)
+                self.score += collectable.score
                 collectable.remove_from_sprite_lists()
 
         # Check for enemy-bullet collisions
@@ -392,9 +413,13 @@ class SpaceGameView(arcade.View):
                     bullet, self.enemy_list
                 )
                 for enemy in enemy_bullet_collision:
-                    # Update this for enemy health, currently just instakills
-                    enemy.remove_from_sprite_lists()
+                    enemy.health -= bullet.strength
+                    if enemy.health <= 0:
+                        self.score += enemy.score
+                        enemy.remove_from_sprite_lists()
                     bullet.remove_from_sprite_lists()
+                    
+                    # Break so one bullet doesn't affect multiple enemies
                     break
 
         # Check for obstacle-bullet collisions
@@ -419,6 +444,7 @@ class SpaceGameView(arcade.View):
         enemy.type = type
         enemy.health = ENEMY_STATS[type]["health"]
         enemy.strength = 1 # Dictates how much damage this enemy does when colliding with player
+        enemy.score = ENEMY_STATS[type]["score"]
         self.enemy_list.append(enemy)
 
     # Spawns a new obstacle of the given type (see OBSTACLE_STATS above)
@@ -442,6 +468,7 @@ class SpaceGameView(arcade.View):
         collectable.change_x = random.uniform(*COLLECTABLE_STATS[type]["velocity_x"])
         collectable.change_y = random.uniform(*COLLECTABLE_STATS[type]["velocity_y"])
         collectable.type = type
+        collectable.score = COLLECTABLE_STATS[type]["score"]
         self.collectable_list.append(collectable)
 
     # Spawns a new bullet of the given type (see BULLET_STATS above)
