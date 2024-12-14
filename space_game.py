@@ -14,14 +14,25 @@ WINDOW_TITLE = "SDEV 265 Space Game"
 WINDOW_DEFAULT_WIDTH = 1280
 WINDOW_DEFAULT_HEIGHT = 720
 
+# Background star speeds
+# STARS_FAR_VELOCITY = -3
+# STARS_MIDDLE_VELOCITY = -5
+# STARS_NEAR_VELOCITY = -7
+
 # Enemy types and their stats
 ENEMY_STATS = {
-    "basic_straight": { "health": 1, "velocity_x": (0, 0), "velocity_y": (-3, -1) },
-    "basic_zigzag": { "health": 1, "velocity_x": (1, 3), "velocity_y": (-3, -1) },
-    "basic_wave": { "health": 1, "velocity_x": (0, 0), "velocity_y": (-3, -1) },
-    "basic_wait": { "health": 1, "velocity_x": (0, 0), "velocity_y": (-3, -1) },
-    "basic_fast": { "health": 1, "velocity_x": (0, 0), "velocity_y": (-3, -1) },
-    "basic_dodge": { "health": 1, "velocity_x": (0, 0), "velocity_y": (-3, -1) },
+    "basic_straight": 
+        { "health": 1, "velocity_x": (0, 0), "velocity_y": (-3, -1), "score": 100 },
+    "basic_zigzag": 
+        { "health": 1, "velocity_x": (1, 3), "velocity_y": (-3, -1), "score": 100 },
+    "basic_wave": 
+        { "health": 1, "velocity_x": (0, 0), "velocity_y": (-3, -1), "score": 100 },
+    "basic_wait": 
+        { "health": 1, "velocity_x": (0, 0), "velocity_y": (-3, -1), "score": 100 },
+    "basic_fast": 
+        { "health": 1, "velocity_x": (0, 0), "velocity_y": (-3, -1), "score": 100 },
+    "basic_dodge": 
+        { "health": 1, "velocity_x": (0, 0), "velocity_y": (-3, -1), "score": 100 },
 }
 
 # Obstacle types and their defaul stats
@@ -54,20 +65,34 @@ OBSTACLE_STATS = {
 
 # Collectable types and their stats
 COLLECTABLE_STATS = {
-    "attack_up": { "velocity_x": (0, 0), "velocity_y": (-3, -1) },
-    "attack_down": { "velocity_x": (0, 0), "velocity_y": (-3, -1) },
-    "defense_up": { "velocity_x": (0, 0), "velocity_y": (-3, -1) },
-    "defense_down": { "velocity_x": (0, 0), "velocity_y": (-3, -1) },
-    "health_small": { "velocity_x": (0, 0), "velocity_y": (-3, -1) },
-    "health_large": { "velocity_x": (0, 0), "velocity_y": (-3, -1) },
-    "speed_up": { "velocity_x": (0, 0), "velocity_y": (-3, -1) },
-    "speed_down": { "velocity_x": (0, 0), "velocity_y": (-3, -1) },
-    "fire_rate_up": { "velocity_x": (0, 0), "velocity_y": (-3, -1) },
-    "fire_rate_down": { "velocity_x": (0, 0), "velocity_y": (-3, -1) },
-    "bullet_speed_up": { "velocity_x": (0, 0), "velocity_y": (-3, -1) },
-    "bullet_speed_down": { "velocity_x": (0, 0), "velocity_y": (-3, -1) },
-    "destroy_all_enemies": { "velocity_x": (0, 0), "velocity_y": (-3, -1) },
-    "invincible": { "velocity_x": (0, 0), "velocity_y": (-3, -1) }
+    "attack_up": 
+        { "velocity_x": (0, 0), "velocity_y": (-3, -1), "score": 100 },
+    "attack_down": 
+        { "velocity_x": (0, 0), "velocity_y": (-3, -1), "score": 100 },
+    "defense_up": 
+        { "velocity_x": (0, 0), "velocity_y": (-3, -1), "score": 100 },
+    "defense_down": 
+        { "velocity_x": (0, 0), "velocity_y": (-3, -1), "score": 100 },
+    "health_small": 
+        { "velocity_x": (0, 0), "velocity_y": (-3, -1), "score": 100 },
+    "health_large": 
+        { "velocity_x": (0, 0), "velocity_y": (-3, -1), "score": 100 },
+    "speed_up": 
+        { "velocity_x": (0, 0), "velocity_y": (-3, -1), "score": 100 },
+    "speed_down": 
+        { "velocity_x": (0, 0), "velocity_y": (-3, -1), "score": 100 },
+    "fire_rate_up": 
+        { "velocity_x": (0, 0), "velocity_y": (-3, -1), "score": 100 },
+    "fire_rate_down": 
+        { "velocity_x": (0, 0), "velocity_y": (-3, -1), "score": 100 },
+    "bullet_speed_up": 
+        { "velocity_x": (0, 0), "velocity_y": (-3, -1), "score": 100 },
+    "bullet_speed_down": 
+        { "velocity_x": (0, 0), "velocity_y": (-3, -1), "score": 100 },
+    "destroy_all_enemies": 
+        { "velocity_x": (0, 0), "velocity_y": (-3, -1), "score": 100 },
+    "invincible": 
+        { "velocity_x": (0, 0), "velocity_y": (-3, -1), "score": 100 }
 }
 
 playerSpeed = 5
@@ -78,6 +103,17 @@ BULLET_STATS = {
     "player_basic": { "velocity_x": (0, 0), "velocity_y": (bulletSpeed, bulletSpeed), "friendly": True},
     "enemy_basic": { "velocity_x": (0, 0), "velocity_y": (-3, -1), "friendly": False}
 }
+
+# Star properties; sizes must be integers
+STAR_SIZE_MIN = 1
+STAR_SIZE_MAX = 6
+STAR_SPEED_MIN = -1
+STAR_SPEED_MAX = -5
+NUM_STARS = 250
+
+# Kill counts required to complete each stage
+KILL_COUNT_THRESHOLDS = [ 1, 2 ]
+MAX_STAGE = 3
 
 # An Arcade Window that will be set to display one of the following Views:
 # SpaceGameView: The main gameplay
@@ -143,9 +179,10 @@ class SpaceGameView(arcade.View):
         self.enemy_direction = 1
         
         #initializes our score and sets us up to implament the game over when you lose and add new waves in the future
-        self.score = 0  
+        self.score = 0
+        self.kills = 0
         self.game_over = False  
-        self.wave = 1
+        self.stage = 1
         self.paused = False
 
     def setup(self):
@@ -154,9 +191,11 @@ class SpaceGameView(arcade.View):
         self.enemy_list = arcade.SpriteList()
         self.collectable_list = arcade.SpriteList()
         self.obstacle_list = arcade.SpriteList()
-        self.score = 0  
+        self.star_list = arcade.SpriteList()
+        self.score = 0
+        self.kills = 0
         self.game_over = False  
-        self.wave = 1
+        self.stage = 1
         self.paused = False
          
         # This is our player I tried to find different sprites but this is what I have for now 
@@ -170,6 +209,10 @@ class SpaceGameView(arcade.View):
         self.player.health = 1
         self.player_list.append(self.player)
 
+        # Spawn the initial stars
+        for _ in range(NUM_STARS):
+            self.spawn_star(True)
+
         # Spawns some objects for testing purposes
         for _ in range(5):
             self.spawn_enemy("basic_straight")
@@ -180,6 +223,8 @@ class SpaceGameView(arcade.View):
     # Drawing method that is called on every frame
     def on_draw(self):
         arcade.start_render()
+
+        self.star_list.draw()
         self.player_list.draw()
         self.bullet_list.draw()
         self.enemy_list.draw()
@@ -188,7 +233,7 @@ class SpaceGameView(arcade.View):
         
         # This will display the score and text for our game
         arcade.draw_text(f"Score: {self.score}", 10, SCREEN_HEIGHT - 50, arcade.color.WHITE, 20)
-        arcade.draw_text(f"Wave: {self.wave}", SCREEN_WIDTH - 130, SCREEN_HEIGHT - 50, arcade.color.WHITE, 20)
+        arcade.draw_text(f"Stage: {self.stage}", SCREEN_WIDTH - 130, SCREEN_HEIGHT - 50, arcade.color.WHITE, 20)
 
         # Debug info
         arcade.draw_text(f"Health: {self.player.health}", 10, 20)
@@ -231,7 +276,7 @@ class SpaceGameView(arcade.View):
         
         if self.paused:
             return
-        
+
         # Update the player's movement
         if self.player.moving_left and not self.player.moving_right:
             self.player.change_x = -playerSpeed
@@ -247,6 +292,7 @@ class SpaceGameView(arcade.View):
         else:
             self.player.change_y = 0
 
+        self.star_list.update()
         self.player_list.update()
         self.bullet_list.update()
         self.enemy_list.update()
@@ -272,23 +318,8 @@ class SpaceGameView(arcade.View):
         # Check for collision between entities
         self.check_collision()
 
-        self.enemy_spawn_timer += delta_time                        #TMJ This is where the timers are compared that will spawn more enemies 
-        if self.enemy_spawn_timer >= self.enemy_spawn_interval:     #TMJ
-            enemy_type = random.choice(list(ENEMY_STATS.keys()))    #TMJ
-            self.spawn_enemy(enemy_type)                            #TMJ
-            self.enemy_spawn_timer = 0                              #TMJ
-
-        self.obstacle_spawn_timer += delta_time                         #TMJ This is where the timers are compared that will spawn more enemies 
-        if self.obstacle_spawn_timer >= self.obstacle_spawn_interval:   #TMJ
-            obstacle_type = random.choice(list(OBSTACLE_STATS.keys()))  #TMJ
-            self.spawn_obstacle(obstacle_type)                          #TMJ
-            self.obstacle_spawn_timer = 0                               #TMJ
-
-        self.collectable_spawn_timer += delta_time                            #TMJ This is where the timers are compared that will spawn more collectables 
-        if self.collectable_spawn_timer >= self.collectable_spawn_interval:   #TMJ
-            collectable_type = random.choice(list(COLLECTABLE_STATS.keys()))  #TMJ
-            self.spawn_collectable(collectable_type)                          #TMJ
-            self.collectable_spawn_timer = 0   
+        # Spawn all entities
+        self.spawn_entities(delta_time)
     
     #Updates button press on release so that we dont continue moving
     def on_key_release(self, key, modifiers):
@@ -321,6 +352,12 @@ class SpaceGameView(arcade.View):
         for collectable in self.collectable_list:
             if collectable.top < 0:
                 collectable.remove_from_sprite_lists()
+
+        # Removes stars that are off screen and spawns new ones
+        for star in self.star_list:
+            if star.center_y < -5:
+                star.remove_from_sprite_lists()
+                self.spawn_star()
 
     def check_collision(self):
         for player in self.player_list:
@@ -357,6 +394,7 @@ class SpaceGameView(arcade.View):
             )
             for collectable in player_collectable_collision:
                 self.collect_collectable(player, collectable.type)
+                self.score += collectable.score
                 collectable.remove_from_sprite_lists()
 
         # Check for enemy-bullet collisions
@@ -366,9 +404,17 @@ class SpaceGameView(arcade.View):
                     bullet, self.enemy_list
                 )
                 for enemy in enemy_bullet_collision:
-                    # Update this for enemy health, currently just instakills
-                    enemy.remove_from_sprite_lists()
+                    enemy.health -= bullet.strength
+                    if enemy.health <= 0:
+                        self.score += enemy.score
+                        self.kills += 1
+                        if self.stage < MAX_STAGE and \
+                            self.kills >= KILL_COUNT_THRESHOLDS[self.stage - 1]:
+                                self.stage += 1
+                        enemy.remove_from_sprite_lists()
                     bullet.remove_from_sprite_lists()
+                    
+                    # Break so one bullet doesn't affect multiple enemies
                     break
 
         # Check for obstacle-bullet collisions
@@ -393,6 +439,7 @@ class SpaceGameView(arcade.View):
         enemy.type = type
         enemy.health = ENEMY_STATS[type]["health"]
         enemy.strength = 1 # Dictates how much damage this enemy does when colliding with player
+        enemy.score = ENEMY_STATS[type]["score"]
         self.enemy_list.append(enemy)
 
     # Spawns a new obstacle of the given type (see OBSTACLE_STATS above)
@@ -416,6 +463,7 @@ class SpaceGameView(arcade.View):
         collectable.change_x = random.uniform(*COLLECTABLE_STATS[type]["velocity_x"])
         collectable.change_y = random.uniform(*COLLECTABLE_STATS[type]["velocity_y"])
         collectable.type = type
+        collectable.score = COLLECTABLE_STATS[type]["score"]
         self.collectable_list.append(collectable)
 
     # Spawns a new bullet of the given type (see BULLET_STATS above)
@@ -428,6 +476,55 @@ class SpaceGameView(arcade.View):
         bullet.friendly = BULLET_STATS[type]["friendly"]
         bullet.strength = 1
         self.bullet_list.append(bullet)
+
+    # Contains all logic for spawning entities based on stage, time passed, etc.
+    def spawn_entities(self, delta_time):
+        self.enemy_spawn_timer += delta_time                        #TMJ This is where the timers are compared that will spawn more enemies 
+        if self.enemy_spawn_timer >= self.enemy_spawn_interval:     #TMJ
+            enemy_type = random.choice(list(ENEMY_STATS.keys()))    #TMJ
+            self.spawn_enemy(enemy_type)                            #TMJ
+            self.enemy_spawn_timer = 0                              #TMJ
+
+        self.obstacle_spawn_timer += delta_time                         #TMJ This is where the timers are compared that will spawn more enemies 
+        if self.obstacle_spawn_timer >= self.obstacle_spawn_interval:   #TMJ
+            obstacle_type = random.choice(list(OBSTACLE_STATS.keys()))  #TMJ
+            self.spawn_obstacle(obstacle_type)                          #TMJ
+            self.obstacle_spawn_timer = 0                               #TMJ
+
+        self.collectable_spawn_timer += delta_time                            #TMJ This is where the timers are compared that will spawn more collectables 
+        if self.collectable_spawn_timer >= self.collectable_spawn_interval:   #TMJ
+            collectable_type = random.choice(list(COLLECTABLE_STATS.keys()))  #TMJ
+            self.spawn_collectable(collectable_type)                          #TMJ
+            self.collectable_spawn_timer = 0   
+
+    # Spawns a new background star. If part of the initial batch of stars
+    # spawned at beginning of game, it will be place on the screen randomly.
+    # Otherwise, it will be placed at the top of the screen.
+    def spawn_star(self, initial = False):
+        star_size = random.randint(STAR_SIZE_MIN, STAR_SIZE_MAX)
+
+        color_random = random.uniform(0, 100)
+        if color_random < 70:
+            star_color = arcade.color.WHITE
+        elif color_random < 80:
+            star_color = arcade.color.WHITE_SMOKE
+        elif color_random < 90:
+            star_color = arcade.color.LIGHT_BLUE
+        elif color_random < 95:
+            star_color = arcade.color.PASTEL_ORANGE
+        else:
+            star_color = arcade.color.RED_ORANGE
+
+        star = arcade.SpriteCircle(star_size, star_color, True)
+
+        if initial:
+            star.center_y = random.uniform(0, SCREEN_HEIGHT)
+        else:
+            star.center_y = SCREEN_HEIGHT + 5
+
+        star.center_x = random.uniform(0, SCREEN_WIDTH)
+        star.change_y = random.uniform(STAR_SPEED_MAX, STAR_SPEED_MIN)
+        self.star_list.append(star)
 
     # Applies collectable effects to given player
     def collect_collectable(self, player, type):
