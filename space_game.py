@@ -121,7 +121,7 @@ DB_FILENAME = "save.db"
 # { { Name, Score }, { Name, Score }, ... }
 high_scores = {}
 # SQLite database reference
-save_db = {}
+save_db = None
 
 # Flag for displaying debug info
 debug_mode = False
@@ -1142,6 +1142,8 @@ def init_save(reset = False):
     save_db = sqlite3.connect(DB_FILENAME)
     if reset or not validate_save():
         if os.path.exists(DB_FILENAME):
+            save_db.close()
+            save_db = None
             os.remove(DB_FILENAME)
             save_db = sqlite3.connect(DB_FILENAME)
         save_db.execute('''CREATE TABLE SCORES (
