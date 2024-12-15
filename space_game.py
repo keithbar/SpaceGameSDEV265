@@ -754,7 +754,7 @@ class SpaceGameView(arcade.View):
         elif type == "bullet_speed_down":
             player.current_bullet_speed -= 3
             if player.current_bullet_speed < BULLET_SPEED_MIN:
-                player.current_bullet_speedd = BULLET_SPEED_MIN
+                player.current_bullet_speed = BULLET_SPEED_MIN
         elif type == "destroy_all_enemies":
             for enemy in self.enemy_list:
                 self.score += enemy.score
