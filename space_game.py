@@ -2,6 +2,7 @@ import arcade
 import math
 import os
 import sqlite3
+import sys
 import random
 
 # Constants
@@ -77,12 +78,27 @@ COLLECTABLE_STATS = {
         { "velocity_x": (0, 0), "velocity_y": (-3, -1), "score": 100 }
 }
 
-playerSpeed = 5
-bulletSpeed = 7
+PLAYER_SPEED_DEFAULT = 5
+PLAYER_SPEED_MAX = 15
+PLAYER_SPEED_MIN = 2
+PLAYER_COOLDOWN_DEFAULT = 20
+PLAYER_COOLDOWN_MAX = 20
+PLAYER_COOLDOWN_MIN = 5
+MAX_HEALTH_DEFAULT = 5
+MAX_HEALTH_MAX = 15
+MAX_HEALTH_MIN = 1
+INVINCIBLE_TIMER = 900
+BULLET_SPEED_DEFAULT = 9
+BULLET_SPEED_MAX = 35
+BULLET_SPEED_MIN = 9
+BULLET_POWER_DEFAULT = 1
+BULLET_POWER_MIN = 1
+BULLET_POWER_MAX = 10
 
 # Bullet types and their stats
 BULLET_STATS = {
-    "player_basic": { "velocity_x": (0, 0), "velocity_y": (bulletSpeed, bulletSpeed), "friendly": True },
+    "player_basic": { "velocity_x": (0, 0),
+        "velocity_y": (BULLET_SPEED_DEFAULT, BULLET_SPEED_DEFAULT), "friendly": True },
     "enemy_basic": { "velocity_x": (0, 0), "velocity_y": (-8, -8), "friendly": False },
     "enemy_tracker": { "velocity_x": (0, 0), "velocity_y": (0, 0), "friendly": False }
 }
@@ -106,6 +122,9 @@ DB_FILENAME = "save.db"
 high_scores = {}
 # SQLite database reference
 save_db = {}
+
+# Flag for displaying debug info
+debug_mode = False
 
 # An Arcade Window that will be set to display one of the following Views:
 # SpaceGameView: The main gameplay
@@ -258,15 +277,16 @@ class SpaceGameView(arcade.View):
         self.bullet_list = None
         self.obstacle_list = None
         self.collectable_list = None
+        self.player_shield = None
 
         self.enemy_spawn_timer = 0            #TMJ These are the count down timers till a new set of enenmies will spawn 
-        self.enemy_spawn_interval = 1.5       #TMJ
+        self.enemy_spawn_interval = 3       #TMJ
 
         self.obstacle_spawn_timer = 0         #TMJ These are the count down timers till a new set of obstacles will spawn 
-        self.obstacle_spawn_interval = 1      #TMJ
+        self.obstacle_spawn_interval = 5      #TMJ
 
         self.collectable_spawn_timer = 0      #TMJ These are the count down timers till a new set of obstacles will spawn 
-        self.collectable_spawn_interval = 1.5 #TMJ
+        self.collectable_spawn_interval = 5 #TMJ
         
         #This is for the enemies when implamented 
         self.enemy_list = None
@@ -286,6 +306,8 @@ class SpaceGameView(arcade.View):
         self.collectable_list = arcade.SpriteList()
         self.obstacle_list = arcade.SpriteList()
         self.star_list = arcade.SpriteList()
+        self.player_shield = arcade.SpriteCircle(100, arcade.color.BABY_BLUE, True)
+        self.player_shield.alpha = 150
         self.score = 0
         self.kills = 0
         self.game_over = False  
@@ -300,7 +322,14 @@ class SpaceGameView(arcade.View):
         self.player.moving_right = False
         self.player.moving_up = False
         self.player.moving_down = False
-        self.player.health = 1
+        self.player.health_max = MAX_HEALTH_DEFAULT
+        self.player.health = MAX_HEALTH_DEFAULT
+        self.player.invincible_timer = 0
+        self.player.current_speed = PLAYER_SPEED_DEFAULT
+        self.player.current_bullet_speed = BULLET_SPEED_DEFAULT
+        self.player.current_bullet_power = BULLET_POWER_DEFAULT
+        self.player.shoot_cooldown_initial = PLAYER_COOLDOWN_DEFAULT
+        self.player.shoot_cooldown = 0
         self.player_list.append(self.player)
 
         # Spawn the initial stars
@@ -324,13 +353,31 @@ class SpaceGameView(arcade.View):
         self.enemy_list.draw()
         self.obstacle_list.draw()
         self.collectable_list.draw()
+
+        if self.player.invincible_timer > 0:
+            self.player_shield.center_x = self.player.center_x
+            self.player_shield.center_y = self.player.center_y
+            self.player_shield.draw()
         
         # This will display the score and text for our game
         arcade.draw_text(f"Score: {self.score}", 10, SCREEN_HEIGHT - 50, arcade.color.WHITE, 20)
         arcade.draw_text(f"Stage: {self.stage}", SCREEN_WIDTH - 130, SCREEN_HEIGHT - 50, arcade.color.WHITE, 20)
 
         # Debug info
-        arcade.draw_text(f"Health: {self.player.health}", 10, 20)
+        global debug_mode
+        if debug_mode:
+            arcade.draw_text(f"Health: {self.player.health}/{self.player.health_max}", 10, 20)
+            arcade.draw_text(f"Shoot cooldown: {self.player.shoot_cooldown}", 10, 50)
+            arcade.draw_text(f"Bullet power: {self.player.current_bullet_power}", 10, 80)
+            arcade.draw_text(f"Bullet speed: {self.player.current_bullet_speed}", 10, 110)
+            arcade.draw_text(f"Speed: {self.player.current_speed}", 10, 140)
+            arcade.draw_text(f"Invincible timer: {self.player.invincible_timer}", 10, 170)
+            for enemy in self.enemy_list:
+                arcade.draw_text(f"Health: {enemy.health}", enemy.center_x + 20, enemy.center_y)
+            for obstacle in self.obstacle_list:
+                arcade.draw_text(f"Health: {obstacle.health}", obstacle.center_x + 20, obstacle.center_y)
+            for collectable in self.collectable_list:
+                arcade.draw_text(collectable.type, collectable.center_x + 10, collectable.center_y)
 
         # Draw the pause overlay
         if self.paused:
@@ -355,8 +402,9 @@ class SpaceGameView(arcade.View):
             self.player.moving_down = True
         
         #This is the projectile I found that looked the best so far however we can change for whatever everyone likes 
-        elif key == arcade.key.SPACE and not self.paused:
+        elif key == arcade.key.SPACE and not self.paused and self.player.shoot_cooldown < 0:
             self.spawn_bullet("player_basic", self.player.center_x, self.player.center_y + 20)
+            self.player.shoot_cooldown = self.player.shoot_cooldown_initial
 
         elif key == arcade.key.ENTER:
             self.paused = not self.paused
@@ -371,20 +419,22 @@ class SpaceGameView(arcade.View):
         if self.paused:
             return
 
-        # Update the player's movement
+        # Update the player's movement and timers
         if self.player.moving_left and not self.player.moving_right:
-            self.player.change_x = -playerSpeed
+            self.player.change_x = -self.player.current_speed
         elif self.player.moving_right and not self.player.moving_left:
-            self.player.change_x = playerSpeed
+            self.player.change_x = self.player.current_speed
         else:
             self.player.change_x = 0
         
         if self.player.moving_up and not self.player.moving_down:
-            self.player.change_y = playerSpeed
+            self.player.change_y = self.player.current_speed
         elif self.player.moving_down and not self.player.moving_up:
-            self.player.change_y = -playerSpeed
+            self.player.change_y = -self.player.current_speed
         else:
             self.player.change_y = 0
+        self.player.shoot_cooldown -= 1
+        self.player.invincible_timer -= 1
 
         self.star_list.update()
         self.player_list.update()
@@ -458,31 +508,33 @@ class SpaceGameView(arcade.View):
     def check_collision(self):
         for player in self.player_list:
 
-            # Check for player-enemy collisions
-            player_enemy_collision = arcade.check_for_collision_with_list(
-                player, self.enemy_list
-            )
-            # Decrement player health and destroy enemy
-            for enemy in player_enemy_collision:
-                player.health -= enemy.strength
-                enemy.remove_from_sprite_lists()
+            # If player is not invincible
+            if player.invincible_timer < 0:
+                # Check for player-enemy collisions
+                player_enemy_collision = arcade.check_for_collision_with_list(
+                    player, self.enemy_list
+                )
+                # Decrement player health and destroy enemy
+                for enemy in player_enemy_collision:
+                    player.health -= enemy.strength
+                    enemy.remove_from_sprite_lists()
 
-            # Check for player-bullet collisions
-            player_bullet_collision = arcade.check_for_collision_with_list(
-                player, self.bullet_list
-            )
-            for bullet in player_bullet_collision:
-                if bullet.friendly == False:
-                    player.health -= bullet.strength
-                    bullet.remove_from_sprite_lists()
+                # Check for player-bullet collisions
+                player_bullet_collision = arcade.check_for_collision_with_list(
+                    player, self.bullet_list
+                )
+                for bullet in player_bullet_collision:
+                    if bullet.friendly == False:
+                        player.health -= bullet.strength
+                        bullet.remove_from_sprite_lists()
 
-            # Check for player-obstacle collisions
-            player_obstacle_collision = arcade.check_for_collision_with_list(
-                player, self.obstacle_list
-            )
-            for obstacle in player_obstacle_collision:
-                player.health -= obstacle.strength
-                obstacle.remove_from_sprite_lists()
+                # Check for player-obstacle collisions
+                player_obstacle_collision = arcade.check_for_collision_with_list(
+                    player, self.obstacle_list
+                )
+                for obstacle in player_obstacle_collision:
+                    player.health -= obstacle.strength
+                    obstacle.remove_from_sprite_lists()
 
             # Check for player-collectable collisions
             player_collectable_collision = arcade.check_for_collision_with_list(
@@ -597,6 +649,10 @@ class SpaceGameView(arcade.View):
             bullet.change_x = 15 * math.sin(math.radians(angle))
             bullet.change_y = 15 * math.cos(math.radians(angle))
             bullet.angle = -angle
+        
+        elif type == "player_basic":
+            bullet.change_y = self.player.current_bullet_speed
+            bullet.strength = self.player.current_bullet_power
 
         self.bullet_list.append(bullet)
 
@@ -651,8 +707,61 @@ class SpaceGameView(arcade.View):
 
     # Applies collectable effects to given player
     def collect_collectable(self, player, type):
-        if type == "health_small":
+        if type == "attack_up":
+            player.current_bullet_power += 1
+            if player.current_bullet_power > BULLET_POWER_MAX:
+                player.current_bullet_power = BULLET_POWER_MAX
+        elif type == "attack_down":
+            player.current_bullet_power -= 1
+            if player.current_bullet_power < BULLET_POWER_MIN:
+                player.current_bullet_power = BULLET_POWER_MIN
+        elif type == "defense_up":
+            player.health_max += 1
+            if player.health_max > MAX_HEALTH_MAX:
+                player.health_max = MAX_HEALTH_MAX
+        elif type == "defense_down":
+            player.health_max -= 1
+            if player.health_max < MAX_HEALTH_MIN:
+                player.health_max = MAX_HEALTH_MIN
+            if player.health > player.health_max:
+                player.health = player.health_max
+        elif type == "health_small":
             player.health += 1
+            if player.health > player.health_max:
+                player.health = player.health_max
+        elif type == "health_large":
+            player.health = player.health_max
+        elif type == "speed_up":
+            player.current_speed += 1
+            if player.current_speed > PLAYER_SPEED_MAX:
+                player.current_speed = PLAYER_SPEED_MAX
+        elif type == "speed_down":
+            player.current_speed -= 1
+            if player.current_speed < PLAYER_SPEED_MIN:
+                player.current_speed = PLAYER_SPEED_MIN
+        elif type == "fire_rate_up":
+            player.shoot_cooldown_initial -= 4
+            if player.shoot_cooldown_initial < PLAYER_COOLDOWN_MIN:
+                player.shoot_cooldown_initial = PLAYER_COOLDOWN_MIN
+        elif type == "fire_rate_down":
+            player.shoot_cooldown_initial += 4
+            if player.shoot_cooldown_initial > PLAYER_COOLDOWN_MAX:
+                player.shoot_cooldown_initial = PLAYER_COOLDOWN_MAX
+        elif type == "bullet_speed_up":
+            player.current_bullet_speed += 3
+            if player.current_bullet_speed > BULLET_SPEED_MAX:
+                player.current_bullet_speed = BULLET_POWER_MAX
+        elif type == "bullet_speed_down":
+            player.current_bullet_speed -= 3
+            if player.current_bullet_speed < BULLET_SPEED_MIN:
+                player.current_bullet_speedd = BULLET_SPEED_MIN
+        elif type == "destroy_all_enemies":
+            for enemy in self.enemy_list:
+                self.score += enemy.score
+            self.enemy_list.clear()
+            self.obstacle_list.clear()
+        elif type == "invincible":
+            self.player.invincible_timer = INVINCIBLE_TIMER
 
     def enemy_shooting(self):
         for enemy in self.enemy_list:
@@ -691,8 +800,6 @@ class TitleView(arcade.View):
 
     def on_draw(self):
         arcade.start_render()
-
-        # test for high score
 
         arcade.draw_text("SDEV 265\nSPACE GAME", 0, SCREEN_HEIGHT * 0.7,
             font_size = 50, width = SCREEN_WIDTH, align = "center")
@@ -1065,6 +1172,9 @@ def init_save(reset = False):
         save_db.commit()
 
 def main():
+    global debug_mode
+    if len(sys.argv) > 1 and sys.argv[1] == "debug":
+        debug_mode = True
     init_save()
     load_game()
     window = SpaceGameWindow()
