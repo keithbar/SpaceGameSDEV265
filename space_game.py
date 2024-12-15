@@ -769,6 +769,8 @@ class TitleView(arcade.View):
             elif self.selected_action == SETTINGS:
                 settings = SettingsView()
                 self.window.show_view(settings)
+            elif self.selected_action == QUIT_GAME:
+                arcade.exit()
 
 class GameOverView(arcade.View):
     def __init__(self):
@@ -988,10 +990,43 @@ def save_score(name, score, replace_id):
 
 # Ensures that a valid save file exists. Used in init_save to overwrite potentially
 # corrupted save files with brand new ones.
-# MUST UPDATE LATER! Currently always returns false in order to get a fresh save
-# file on every boot for testing purposes.
 def validate_save():
-    return False
+    global save_db
+    global high_scores
+
+    # Save file does not exist
+    if not os.path.exists(DB_FILENAME):
+        return False
+    
+    # Can't connect to database
+    try:
+        save_db = sqlite3.connect(DB_FILENAME)
+    except:
+        return False
+    
+    # Score table not present in save file
+    try:
+        high_scores = save_db.execute('''SELECT * FROM SCORES''').fetchall()
+    except:
+        return False
+    
+    # Incorrect number of scores present
+    if len(high_scores) != 10:
+        return False
+    
+    # Incorrect score format
+    try:
+        schema = save_db.execute('''PRAGMA table_info('SCORES')''').fetchall()
+        if len(schema) != 3 or \
+            schema[0][1] != "ID" or schema[0][2] != "INTEGER" or schema[0][5] != 1 or \
+            schema[1][1] != "NAME" or schema[1][2] != "TEXT" or schema[1][5] != 0 or \
+            schema[2][1] != "SCORE" or schema[2][2] != "INT" or schema[2][5] != 0:
+                return False
+    except:
+        return False
+    
+    # All checks pass, save is (probably) valid
+    return True
 
 # Initializes a new save file if one doesn't already exist,
 # populating the leaderboard with default values
