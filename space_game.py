@@ -629,6 +629,9 @@ class TitleView(arcade.View):
                 high_score = HighScoreView()
                 high_score.setup()
                 self.window.show_view(high_score)
+            elif self.selected_action == SETTINGS:
+                settings = SettingsView()
+                self.window.show_view(settings)
 
 class GameOverView(arcade.View):
     def __init__(self):
@@ -746,6 +749,91 @@ class HighScoreView(arcade.View):
             title.setup()
             self.window.show_view(title)
 
+DELETE_SCORES = 0
+RETURN_TO_TITLE = 1
+CONFIRM_NO = 2
+CONFIRM_YES = 3
+
+class SettingsView(arcade.View):
+    def __init__(self):
+        super().__init__()
+        self.delete_confirmation = False
+        self.selected_action = DELETE_SCORES
+
+    def on_draw(self):
+        arcade.start_render()
+        print_y = SCREEN_HEIGHT * .7
+        line_height = 45
+        text_delete_scores = arcade.Text("  Reset high scores  ", 0, print_y, \
+            font_size = 25, width = SCREEN_WIDTH, align = "center")
+        text_return_to_tile = arcade.Text("  Return to title screen  ", 0, print_y - line_height * 5, \
+            font_size = 25, width = SCREEN_WIDTH, align = "center")
+        text_confirmation = arcade.Text("Are you sure?", 0, print_y - line_height, \
+            font_size = 25, width = SCREEN_WIDTH, align = "center")
+        text_confirmation_no = arcade.Text("  No  ", 0, print_y - line_height * 2, \
+            font_size = 25, width = SCREEN_WIDTH, align = "center")
+        text_confirmation_yes = arcade.Text("  Yes  ", 0, print_y - line_height * 3, \
+            font_size = 25, width = SCREEN_WIDTH, align = "center")
+        
+        text_delete_scores.draw()
+        text_return_to_tile.draw()
+
+        if self.delete_confirmation:
+            text_confirmation.draw()
+            text_confirmation_no.draw()
+            text_confirmation_yes.draw()
+
+        if self.selected_action == DELETE_SCORES:
+            selected_text = text_delete_scores
+        elif self.selected_action == RETURN_TO_TITLE:
+            selected_text = text_return_to_tile
+        elif self.selected_action == CONFIRM_NO:
+            selected_text = text_confirmation_no
+        else:
+            selected_text = text_confirmation_yes
+
+        arrow_size = 25
+        text_width = selected_text.content_width
+        arrow_left_x = SCREEN_WIDTH / 2 - text_width / 2 - arrow_size
+        arrow_y = selected_text.y
+        arcade.draw_triangle_filled(
+            arrow_left_x, arrow_y, 
+            arrow_left_x, arrow_y + arrow_size,
+            arrow_left_x + arrow_size, arrow_y + arrow_size / 2,
+            arcade.color.WHITE
+        )
+
+    def on_key_press(self, key, modifiers):
+        if key == arcade.key.DOWN:
+            self.selected_action += 1
+            if not self.delete_confirmation and self.selected_action > 1:
+                self.selected_action = 0
+            elif self.delete_confirmation and self.selected_action > 3:
+                self.selected_action = 2
+        elif key == arcade.key.UP:
+            self.selected_action -= 1
+            if not self.delete_confirmation and self.selected_action < 0:
+                self.selected_action = 1
+            elif self.delete_confirmation and self.selected_action < 2:
+                self.selected_action = 3
+
+    def on_key_release(self, key, modifiers):
+        if key == arcade.key.ENTER:
+            if self.selected_action == DELETE_SCORES:
+                self.delete_confirmation = True
+                self.selected_action = CONFIRM_NO
+            elif self.selected_action == RETURN_TO_TITLE:
+                title = TitleView()
+                title.setup()
+                self.window.show_view(title)
+            elif self.selected_action == CONFIRM_NO:
+                self.delete_confirmation = False
+                self.selected_action = DELETE_SCORES
+            elif self.selected_action == CONFIRM_YES:
+                init_save(True)
+                self.delete_confirmation = False
+                self.selected_action = DELETE_SCORES
+        
 # Reads all the scores from the database into an easily accessible list
 def load_game():
     global high_scores
@@ -769,10 +857,10 @@ def validate_save():
 
 # Initializes a new save file if one doesn't already exist,
 # populating the leaderboard with default values
-def init_save():
+def init_save(reset = False):
     global save_db
     save_db = sqlite3.connect(DB_FILENAME)
-    if not validate_save():
+    if reset or not validate_save():
         if os.path.exists(DB_FILENAME):
             os.remove(DB_FILENAME)
             save_db = sqlite3.connect(DB_FILENAME)
@@ -802,7 +890,6 @@ def init_save():
         save_db.execute('''INSERT INTO SCORES(NAME, SCORE)
                             VALUES("test10", 10)''')
         save_db.commit()
-
 
 def main():
     init_save()
