@@ -1,4 +1,5 @@
 import arcade
+import math
 import os
 import sqlite3
 import random
@@ -15,22 +16,6 @@ SCREEN_HEIGHT = 1080
 WINDOW_TITLE = "SDEV 265 Space Game"
 WINDOW_DEFAULT_WIDTH = 1280
 WINDOW_DEFAULT_HEIGHT = 720
-
-# Enemy types and their stats
-ENEMY_STATS = {
-    "basic_straight": 
-        { "health": 1, "velocity_x": (0, 0), "velocity_y": (-3, -1), "score": 100 },
-    "basic_zigzag": 
-        { "health": 1, "velocity_x": (1, 3), "velocity_y": (-3, -1), "score": 100 },
-    "basic_wave": 
-        { "health": 1, "velocity_x": (0, 0), "velocity_y": (-3, -1), "score": 100 },
-    "basic_wait": 
-        { "health": 1, "velocity_x": (0, 0), "velocity_y": (-3, -1), "score": 100 },
-    "basic_fast": 
-        { "health": 1, "velocity_x": (0, 0), "velocity_y": (-3, -1), "score": 100 },
-    "basic_dodge": 
-        { "health": 1, "velocity_x": (0, 0), "velocity_y": (-3, -1), "score": 100 },
-}
 
 # Obstacle types and their defaul stats
 OBSTACLE_STATS = {
@@ -97,8 +82,9 @@ bulletSpeed = 7
 
 # Bullet types and their stats
 BULLET_STATS = {
-    "player_basic": { "velocity_x": (0, 0), "velocity_y": (bulletSpeed, bulletSpeed), "friendly": True},
-    "enemy_basic": { "velocity_x": (0, 0), "velocity_y": (-3, -1), "friendly": False}
+    "player_basic": { "velocity_x": (0, 0), "velocity_y": (bulletSpeed, bulletSpeed), "friendly": True },
+    "enemy_basic": { "velocity_x": (0, 0), "velocity_y": (-8, -8), "friendly": False },
+    "enemy_tracker": { "velocity_x": (0, 0), "velocity_y": (0, 0), "friendly": False }
 }
 
 # Star properties; sizes must be integers
@@ -161,6 +147,108 @@ class SpaceGameWindow(arcade.Window):
             viewport_height = height
             self.ctx.viewport = (width - viewport_width) / 2, 0, viewport_width, viewport_height
         
+# Enemy types and their stats
+ENEMY_STATS = {
+    "basic_straight": 
+        { "health": 1, "velocity_x": (0, 0), "velocity_y": (-4, -2), "score": 100 },
+    "basic_zigzag": 
+        { "health": 1, "velocity_x": (-3, 3), "velocity_y": (-3, -1), "score": 200 },
+    "basic_wave": 
+        { "health": 1, "velocity_x": (4, 12), "velocity_y": (-6, -3), "score": 300 },
+    "basic_wait": 
+        { "health": 1, "velocity_x": (0, 0), "velocity_y": (-9, -5), "score": 200 },
+    "basic_fast": 
+        { "health": 1, "velocity_x": (0, 0), "velocity_y": (-20, -13), "score": 200 },
+    "basic_dodge": 
+        { "health": 1, "velocity_x": (0, 0), "velocity_y": (-3, -1), "score": 100 },
+}
+
+SHOOT_COOLDOWN = 40
+
+class Enemy(arcade.Sprite):
+    def __init__(self, type):
+        filename = ":resources:images/space_shooter/playerShip3_orange.png"
+        scale = 0.8
+        flipped_vertically = True
+        super().__init__(filename, scale, flipped_vertically = flipped_vertically)
+        self.center_x = random.uniform(0, SCREEN_WIDTH)
+        self.center_y = SCREEN_HEIGHT + self.height
+        self.change_x = random.uniform(*ENEMY_STATS[type]["velocity_x"])
+        self.change_y = random.uniform(*ENEMY_STATS[type]["velocity_y"])
+        self.type = type
+        self.health = ENEMY_STATS[type]["health"]
+        self.strength = 1 # Dictates how much damage this enemy does when colliding with player
+        self.score = ENEMY_STATS[type]["score"]
+        self.shooting = False
+        self.shoot_cooldown = SHOOT_COOLDOWN
+
+        if type == "basic_zigzag":
+            self.timer = random.uniform(120, 240)
+            self.tolerance = 200
+        elif type == "basic_wave":
+            self.initial_change_x = self.change_x
+            self.sine_input = 0.05
+            self.sine_input_change = 0.05
+        elif type == "basic_wait":
+            self.timer_move = random.uniform(40, 120)
+            self.timer_wait = random.uniform(40, 80)
+            self.zoom = False
+        elif type == "basic_dodge":
+            self.dodging = False
+            self.dodge_direction = 1
+            self.tolerance = 100
+            self.dodge_time = 10
+            self.timer = 20
+            self.dodge_speed = 25
+            self.dodge_count = random.randint(1, 4)
+
+    def update(self):
+        if self.type == "basic_straight":
+            self.shoot_cooldown -= 1
+            if self.shoot_cooldown < 0:
+                shoot_random_value = random.uniform(0, 100)
+                if shoot_random_value < 0.2:
+                    self.shooting = True
+                    self.shoot_cooldown = SHOOT_COOLDOWN
+
+        elif self.type == "basic_zigzag":
+            self.timer -= 1
+            self.shoot_cooldown -= 1
+            if self.timer < 0:
+                self.change_x = -self.change_x
+                self.timer = random.uniform(120, 240)
+
+        elif self.type == "basic_wave":
+            self.change_x = math.sin(self.sine_input) * self.initial_change_x
+            self.sine_input += self.sine_input_change
+
+        elif self.type == "basic_wait":
+            self.shoot_cooldown -= 1
+            if self.change_y < 0 and not self.zoom:
+                self.timer_move -= 1
+                if self.timer_move < 0:
+                    self.change_y = 0
+            elif self.change_y == 0:
+                self.timer_wait -= 1
+                if self.timer_wait < 0:
+                    self.zoom = True
+                    self.change_y = random.uniform(-20, -12)
+
+        elif self.type == "basic_dodge":
+            if self.dodging:
+                self.timer -= 1
+                if self.timer > 0:
+                    if self.dodge_direction > 0:
+                        self.change_x = self.dodge_speed
+                    else:
+                        self.change_x = -self.dodge_speed
+                else:
+                    self.dodging = False
+                    self.timer = self.dodge_time
+                    self.change_x = 0
+        return super().update()
+
+
 # Class for the main game loop, extends Arcade's View class
 class SpaceGameView(arcade.View):
     def __init__(self):
@@ -220,11 +308,11 @@ class SpaceGameView(arcade.View):
             self.spawn_star(True)
 
         # Spawns some objects for testing purposes
-        for _ in range(5):
-            self.spawn_enemy("basic_straight")
-            self.spawn_obstacle("small")
-            self.spawn_collectable("health_small")
-        self.spawn_bullet("enemy_basic", 1000, 1080)
+        # for _ in range(5):
+        #     self.spawn_enemy("basic_straight")
+        #     self.spawn_obstacle("small")
+        #     self.spawn_collectable("health_small")
+        # self.spawn_bullet("enemy_basic", 1000, 1080)
         
     # Drawing method that is called on every frame
     def on_draw(self):
@@ -326,6 +414,8 @@ class SpaceGameView(arcade.View):
 
         # Spawn all entities
         self.spawn_entities(delta_time)
+
+        self.enemy_shooting()
     
     #Updates button press on release so that we dont continue moving
     def on_key_release(self, key, modifiers):
@@ -435,17 +525,20 @@ class SpaceGameView(arcade.View):
                     bullet.remove_from_sprite_lists()
                     break
 
+        # Do a special check for dodging enemies
+        for enemy in self.enemy_list:
+            if enemy.type == "basic_dodge" and enemy.dodge_count > 0 and not enemy.dodging:
+                for bullet in self.bullet_list:
+                    if bullet.friendly == True:
+                        distance = arcade.get_distance_between_sprites(enemy, bullet)
+                        if distance < enemy.tolerance:
+                            enemy.dodging = True
+                            enemy.dodge_direction = enemy.center_x - bullet.center_x
+                            enemy.dodge_count -= 1
+
     # Spawns a new enemy of the given type (see ENEMY_STATS above)
     def spawn_enemy(self, type):
-        enemy = arcade.Sprite(":resources:images/space_shooter/playerShip3_orange.png", 0.8, flipped_vertically=True)
-        enemy.center_x = random.uniform(0, SCREEN_WIDTH)
-        enemy.center_y = SCREEN_HEIGHT + enemy.height
-        enemy.change_x = random.uniform(*ENEMY_STATS[type]["velocity_x"])
-        enemy.change_y = random.uniform(*ENEMY_STATS[type]["velocity_y"])
-        enemy.type = type
-        enemy.health = ENEMY_STATS[type]["health"]
-        enemy.strength = 1 # Dictates how much damage this enemy does when colliding with player
-        enemy.score = ENEMY_STATS[type]["score"]
+        enemy = Enemy(type)
         self.enemy_list.append(enemy)
 
     # Spawns a new obstacle of the given type (see OBSTACLE_STATS above)
@@ -474,13 +567,24 @@ class SpaceGameView(arcade.View):
 
     # Spawns a new bullet of the given type (see BULLET_STATS above)
     def spawn_bullet(self, type, x, y):
+        friendly = BULLET_STATS[type]["friendly"]
         bullet = arcade.Sprite(":resources:images/space_shooter/laserRed01.png", 0.8)
         bullet.center_x = x
         bullet.center_y = y
         bullet.change_x = random.uniform(*BULLET_STATS[type]["velocity_x"])
         bullet.change_y = random.uniform(*BULLET_STATS[type]["velocity_y"])
-        bullet.friendly = BULLET_STATS[type]["friendly"]
+        bullet.friendly = friendly
         bullet.strength = 1
+
+        if type == "enemy_tracker":
+            angle = arcade.get_angle_degrees(
+                bullet.center_x, bullet.center_y,
+                self.player.center_x, self.player.center_y
+            )
+            bullet.change_x = 15 * math.sin(math.radians(angle))
+            bullet.change_y = 15 * math.cos(math.radians(angle))
+            bullet.angle = -angle
+
         self.bullet_list.append(bullet)
 
     # Contains all logic for spawning entities based on stage, time passed, etc.
@@ -536,6 +640,26 @@ class SpaceGameView(arcade.View):
     def collect_collectable(self, player, type):
         if type == "health_small":
             player.health += 1
+
+    def enemy_shooting(self):
+        for enemy in self.enemy_list:
+            # Do a special check for zigzaggers who only shoot when the player is below them
+            if enemy.type == "basic_zigzag" and enemy.shoot_cooldown < 0:
+                if abs(enemy.center_x - self.player.center_x) < enemy.tolerance:
+                    random_value = random.uniform(0, 100)
+                    if random_value < 1:
+                        enemy.shooting = True
+                        enemy.shoot_cooldown = SHOOT_COOLDOWN
+
+            # Do a special check for waiters who always shoot when waiting
+            elif enemy.type == "basic_wait" and enemy.change_y == 0 \
+                    and enemy.shoot_cooldown < 0:
+                self.spawn_bullet("enemy_tracker", enemy.center_x, enemy.center_y)
+                enemy.shoot_cooldown = SHOOT_COOLDOWN // 4
+
+            if enemy.shooting and not enemy.type == "basic_wait":
+                enemy.shooting = False
+                self.spawn_bullet("enemy_basic", enemy.center_x, enemy.center_y)
 
 START_GAME = 0
 HIGH_SCORE = 1
@@ -681,30 +805,31 @@ class GameOverView(arcade.View):
     def on_key_press(self, key, moddifiers):
         # Left and Right will change which initial is being modified,
         # setting the colors accordingly
-        if key == arcade.key.LEFT:
-            self.initials_colors[self.selected_initial] = arcade.color.WHITE
-            self.selected_initial -= 1
-            if self.selected_initial < 0:
-                self.selected_initial = 2
-            self.initials_colors[self.selected_initial] = arcade.color.RED
-        elif key == arcade.key.RIGHT:
-            self.initials_colors[self.selected_initial] = arcade.color.WHITE
-            self.selected_initial += 1
-            if self.selected_initial > 2:
-                self.selected_initial = 0
-            self.initials_colors[self.selected_initial] = arcade.color.RED
-        
-        # Up and Down will the change the character displayed
-        elif key == arcade.key.UP:
-            new_char = chr(ord(self.initials[self.selected_initial]) + 1)
-            if ord(new_char) > ord('Z'):
-                new_char = 'A'
-            self.initials[self.selected_initial] = new_char
-        elif key == arcade.key.DOWN:
-            new_char = chr(ord(self.initials[self.selected_initial]) - 1)
-            if ord(new_char) < ord('A'):
-                new_char = 'Z'
-            self.initials[self.selected_initial] = new_char
+        if self.new_high_score:
+            if key == arcade.key.LEFT:
+                self.initials_colors[self.selected_initial] = arcade.color.WHITE
+                self.selected_initial -= 1
+                if self.selected_initial < 0:
+                    self.selected_initial = 2
+                self.initials_colors[self.selected_initial] = arcade.color.RED
+            elif key == arcade.key.RIGHT:
+                self.initials_colors[self.selected_initial] = arcade.color.WHITE
+                self.selected_initial += 1
+                if self.selected_initial > 2:
+                    self.selected_initial = 0
+                self.initials_colors[self.selected_initial] = arcade.color.RED
+            
+            # Up and Down will the change the character displayed
+            elif key == arcade.key.UP:
+                new_char = chr(ord(self.initials[self.selected_initial]) + 1)
+                if ord(new_char) > ord('Z'):
+                    new_char = 'A'
+                self.initials[self.selected_initial] = new_char
+            elif key == arcade.key.DOWN:
+                new_char = chr(ord(self.initials[self.selected_initial]) - 1)
+                if ord(new_char) < ord('A'):
+                    new_char = 'Z'
+                self.initials[self.selected_initial] = new_char
 
     def on_key_release(self, key, modifiers):
         if key == arcade.key.ENTER:
