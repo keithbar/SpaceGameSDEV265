@@ -26,22 +26,22 @@ OBSTACLE_STATS = {
         { "health": 1, "velocity_x": (0, 0), "velocity_y": (-5, -2), \
             "velocity_rotation": (-5, 5), "strength": 1 },
     "medium":
-        { "health": 1, "velocity_x": (0, 0), "velocity_y": (-5, -2), \
-            "velocity_rotation": (-5, 5,), "strength": 2 },
+        { "health": 3, "velocity_x": (0, 0), "velocity_y": (-5, -2), \
+            "velocity_rotation": (-3, 3,), "strength": 2 },
     "medium_fast":
-        { "health": 1, "velocity_x": (0, 0), "velocity_y": (-5, -2), \
+        { "health": 3, "velocity_x": (0, 0), "velocity_y": (-5, -2), \
             "velocity_rotation": (-5, 5), "strength": 2 },
     "large":
-        { "health": 3, "velocity_x": (0, 0), "velocity_y": (-5, -2), \
-            "velocity_rotation": (-5, 5), "strength": 3 },
+        { "health": 5, "velocity_x": (0, 0), "velocity_y": (-5, -2), \
+            "velocity_rotation": (-1, 1), "strength": 3 },
     "large_fast":
-        { "health": 3, "velocity_x": (0, 0), "velocity_y": (-5, -2), \
+        { "health": 5, "velocity_x": (0, 0), "velocity_y": (-5, -2), \
             "velocity_rotation": (-5, 5), "strength": 3 },
     "long":
-        { "health": 1, "velocity_x": (0, 0), "velocity_y": (-5, -2), \
-            "velocity_rotation": (-5, 5), "strength": 2 },
+        { "health": 4, "velocity_x": (0, 0), "velocity_y": (-5, -2), \
+            "velocity_rotation": (-3, 3), "strength": 2 },
     "long_fast":
-        { "health": 1, "velocity_x": (0, 0), "velocity_y": (-5, -2), \
+        { "health": 4, "velocity_x": (0, 0), "velocity_y": (-5, -2), \
             "velocity_rotation": (-5, 5), "strength": 2 }
 }
 
@@ -520,8 +520,9 @@ class SpaceGameView(arcade.View):
                     bullet, self.obstacle_list
                 )
                 for obstacle in obstacle_bullet_collision:
-                    # Update this for obstacle health, currently just instakills
-                    obstacle.remove_from_sprite_lists()
+                    obstacle.health -= bullet.strength
+                    if obstacle.health <= 0:
+                        obstacle.remove_from_sprite_lists()
                     bullet.remove_from_sprite_lists()
                     break
 
@@ -543,7 +544,19 @@ class SpaceGameView(arcade.View):
 
     # Spawns a new obstacle of the given type (see OBSTACLE_STATS above)
     def spawn_obstacle(self, type):
-        obstacle = arcade.Sprite(":resources:images/space_shooter/meteorGrey_small2.png")
+        if type == "small" or type == "small_fast":
+            image = ":resources:images/space_shooter/meteorGrey_small2.png"
+            scale = 1
+        elif type == "medium" or type == "medium_fast":
+            image = ":resources:images/space_shooter/meteorGrey_med1.png"
+            scale = 1
+        elif type == "large" or type == "large_fast":
+            image = ":resources:images/space_shooter/meteorGrey_big1.png"
+            scale = 1
+        else:
+            image = ":resources:images/items/gold_4.png"
+            scale = 8
+        obstacle = arcade.Sprite(image, scale)
         obstacle.center_x = random.uniform(0, SCREEN_WIDTH)
         obstacle.center_y = SCREEN_HEIGHT + obstacle.height
         obstacle.change_x = random.uniform(*OBSTACLE_STATS[type]["velocity_x"])
