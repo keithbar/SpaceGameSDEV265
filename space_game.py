@@ -12,6 +12,10 @@ import random
 # scaled to the size of the window
 SCREEN_WIDTH = 1920
 SCREEN_HEIGHT = 1080
+GAME_AREA_LEFT = 620
+GAME_AREA_RIGHT = 1300
+GAME_AREA_BOTTOM = 110
+GAME_AREA_TOP = 1020
 
 # Values concerning the window, including default dimensions.
 WINDOW_TITLE = "SDEV 265 Space Game"
@@ -190,7 +194,7 @@ class Enemy(arcade.Sprite):
         scale = 0.8
         flipped_vertically = True
         super().__init__(filename, scale, flipped_vertically = flipped_vertically)
-        self.center_x = random.uniform(0, SCREEN_WIDTH)
+        self.center_x = random.uniform(GAME_AREA_LEFT, GAME_AREA_RIGHT)
         self.center_y = SCREEN_HEIGHT + self.height
         self.change_x = random.uniform(*ENEMY_STATS[type]["velocity_x"])
         self.change_y = random.uniform(*ENEMY_STATS[type]["velocity_y"])
@@ -279,6 +283,10 @@ class SpaceGameView(arcade.View):
         self.collectable_list = None
         self.player_shield = None
 
+        # Stuff for hud
+        self.hud_frame = None
+        self.bg_moon = None
+
         self.enemy_spawn_timer = 0            #TMJ These are the count down timers till a new set of enenmies will spawn 
         self.enemy_spawn_interval = 3       #TMJ
 
@@ -308,6 +316,10 @@ class SpaceGameView(arcade.View):
         self.star_list = arcade.SpriteList()
         self.player_shield = arcade.SpriteCircle(100, arcade.color.BABY_BLUE, True)
         self.player_shield.alpha = 150
+        self.hud_frame = arcade.Sprite("./res/img/hud_frame.png", 
+            center_x = SCREEN_WIDTH // 2, center_y = SCREEN_HEIGHT // 2)
+        self.bg_moon = arcade.Sprite("./res/img/bg_moon.png", 
+            center_x = SCREEN_WIDTH // 2, center_y = -100)
         self.score = 0
         self.kills = 0
         self.game_over = False  
@@ -317,7 +329,7 @@ class SpaceGameView(arcade.View):
         # This is our player I tried to find different sprites but this is what I have for now 
         self.player = arcade.Sprite(":resources:images/space_shooter/playerShip1_orange.png", 0.8)
         self.player.center_x = SCREEN_WIDTH // 2
-        self.player.center_y = 50
+        self.player.center_y = 200
         self.player.moving_left = False
         self.player.moving_right = False
         self.player.moving_up = False
@@ -348,6 +360,7 @@ class SpaceGameView(arcade.View):
         arcade.start_render()
 
         self.star_list.draw()
+        self.bg_moon.draw()
         self.player_list.draw()
         self.bullet_list.draw()
         self.enemy_list.draw()
@@ -358,6 +371,13 @@ class SpaceGameView(arcade.View):
             self.player_shield.center_x = self.player.center_x
             self.player_shield.center_y = self.player.center_y
             self.player_shield.draw()
+
+        # Draw hud on top of everything else
+        arcade.draw_rectangle_filled(GAME_AREA_LEFT // 2, SCREEN_HEIGHT // 2,
+            GAME_AREA_LEFT, SCREEN_HEIGHT, arcade.color.BLACK)
+        arcade.draw_rectangle_filled(GAME_AREA_RIGHT + GAME_AREA_LEFT // 2, SCREEN_HEIGHT // 2,
+            GAME_AREA_LEFT, SCREEN_HEIGHT, arcade.color.BLACK)
+        self.hud_frame.draw()
         
         # This will display the score and text for our game
         arcade.draw_text(f"Score: {self.score}", 10, SCREEN_HEIGHT - 50, arcade.color.WHITE, 20)
@@ -444,17 +464,17 @@ class SpaceGameView(arcade.View):
         self.collectable_list.update()
 
         # This is what keeps our ship confined to our screen
-        if self.player.left < 0:
-            self.player.left = 0
+        if self.player.left < GAME_AREA_LEFT:
+            self.player.left = GAME_AREA_LEFT
 
-        elif self.player.right > SCREEN_WIDTH:
-            self.player.right = SCREEN_WIDTH
+        elif self.player.right > GAME_AREA_RIGHT:
+            self.player.right = GAME_AREA_RIGHT
 
-        if self.player.bottom < 0:
-            self.player.bottom = 0
+        if self.player.bottom < GAME_AREA_BOTTOM:
+            self.player.bottom = GAME_AREA_BOTTOM
 
-        elif self.player.top > SCREEN_HEIGHT:
-            self.player.top = SCREEN_HEIGHT
+        elif self.player.top > GAME_AREA_TOP:
+            self.player.top = GAME_AREA_TOP
 
         # Remove entities that have moved off screen
         self.cull_off_screen()
@@ -481,7 +501,7 @@ class SpaceGameView(arcade.View):
     def cull_off_screen(self):
         # Removes the bullets that are off screen 
         for bullet in self.bullet_list:
-            if bullet.bottom > SCREEN_HEIGHT:
+            if bullet.bottom > SCREEN_HEIGHT or bullet.top < 0:
                 bullet.remove_from_sprite_lists()
 
         # Removes enemies that are off screen
@@ -609,7 +629,7 @@ class SpaceGameView(arcade.View):
             image = ":resources:images/items/gold_4.png"
             scale = 8
         obstacle = arcade.Sprite(image, scale)
-        obstacle.center_x = random.uniform(0, SCREEN_WIDTH)
+        obstacle.center_x = random.uniform(GAME_AREA_LEFT, GAME_AREA_RIGHT)
         obstacle.center_y = SCREEN_HEIGHT + obstacle.height
         obstacle.change_x = random.uniform(*OBSTACLE_STATS[type]["velocity_x"])
         obstacle.change_y = random.uniform(*OBSTACLE_STATS[type]["velocity_y"])
@@ -622,7 +642,7 @@ class SpaceGameView(arcade.View):
     # Spawns a new collectable of the given type (see COLLECTABLE_STATS above)
     def spawn_collectable(self, type):
         collectable = arcade.Sprite(":resources:images/items/coinGold.png", 0.5)
-        collectable.center_x = random.uniform(0, SCREEN_WIDTH)
+        collectable.center_x = random.uniform(GAME_AREA_LEFT, GAME_AREA_RIGHT)
         collectable.center_y = SCREEN_HEIGHT + collectable.height
         collectable.change_x = random.uniform(*COLLECTABLE_STATS[type]["velocity_x"])
         collectable.change_y = random.uniform(*COLLECTABLE_STATS[type]["velocity_y"])
@@ -701,7 +721,7 @@ class SpaceGameView(arcade.View):
         else:
             star.center_y = SCREEN_HEIGHT + 5
 
-        star.center_x = random.uniform(0, SCREEN_WIDTH)
+        star.center_x = random.uniform(GAME_AREA_LEFT, GAME_AREA_RIGHT)
         star.change_y = random.uniform(STAR_SPEED_MAX, STAR_SPEED_MIN)
         self.star_list.append(star)
 
