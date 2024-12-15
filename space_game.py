@@ -1,4 +1,6 @@
 import arcade
+import os
+import sqlite3
 import random
 
 # Constants
@@ -13,11 +15,6 @@ SCREEN_HEIGHT = 1080
 WINDOW_TITLE = "SDEV 265 Space Game"
 WINDOW_DEFAULT_WIDTH = 1280
 WINDOW_DEFAULT_HEIGHT = 720
-
-# Background star speeds
-# STARS_FAR_VELOCITY = -3
-# STARS_MIDDLE_VELOCITY = -5
-# STARS_NEAR_VELOCITY = -7
 
 # Enemy types and their stats
 ENEMY_STATS = {
@@ -114,6 +111,15 @@ NUM_STARS = 250
 # Kill counts required to complete each stage
 KILL_COUNT_THRESHOLDS = [ 1, 2 ]
 MAX_STAGE = 3
+
+# Save data values
+# Filename for the savefile
+DB_FILENAME = "save.db"
+# List of high scores in the following format:
+# { { Name, Score }, { Name, Score }, ... }
+high_scores = {}
+# SQLite database reference
+save_db = {}
 
 # An Arcade Window that will be set to display one of the following Views:
 # SpaceGameView: The main gameplay
@@ -549,6 +555,8 @@ class TitleView(arcade.View):
     def on_draw(self):
         arcade.start_render()
 
+        # test for high score
+
         arcade.draw_text("SDEV 265\nSPACE GAME", 0, SCREEN_HEIGHT * 0.7,
             font_size = 50, width = SCREEN_WIDTH, align = "center")
         
@@ -617,21 +625,120 @@ class TitleView(arcade.View):
                 game = SpaceGameView()
                 game.setup()
                 self.window.show_view(game)
+            elif self.selected_action == HIGH_SCORE:
+                high_score = HighScoreView()
+                high_score.setup()
+                self.window.show_view(high_score)
 
 class GameOverView(arcade.View):
     def __init__(self):
         super().__init__()
         self.score = 0
+        self.new_high_score = False
+        self.replace_score_id = 0
+        self.initials = []
+        self.initials_colors = []
+        self.selected_initial = 0
 
     def setup(self, score):
         self.score = score
+        global save_db
+        # Grab the lowest score in the leaderboard for comparison
+        lowest_score = save_db.execute("SELECT *, MIN(SCORE) FROM SCORES").fetchall()
+        if score <= lowest_score[0][2]:
+            # Score is too low for leaderboards, set flag accordingly
+            self.new_high_score = False
+        else:
+            # The player has set a high score
+            self.new_high_score = True
+            self.replace_score_id = lowest_score[0][0]
+            # Initialize an array of characters used for the name entry screen
+            self.initials = ['A', 'A', 'A']
+            # Set the color of the selected initial as red
+            self.initials_colors = [arcade.color.RED, arcade.color.WHITE, arcade.color.WHITE]
 
     def on_draw(self):
         arcade.start_render()
         arcade.draw_text("GAME OVER", 0, SCREEN_HEIGHT * 0.7,
             font_size = 50, width = SCREEN_WIDTH, align = "center")
-        arcade.draw_text(f"Your score was {self.score}\nPress Enter to return to title screen.", 
-            0, SCREEN_HEIGHT * 0.4, font_size = 25, width = SCREEN_WIDTH, align = "center")
+        if self.new_high_score:
+            arcade.draw_text(f"Your score was {self.score}\nNew high score set!\nEnter your initials.", \
+                0, SCREEN_HEIGHT * 0.4, font_size = 25, width = SCREEN_WIDTH, align = "center")
+            
+            arcade.draw_text(self.initials[0], 0, SCREEN_HEIGHT * .5, \
+                color = self.initials_colors[0], font_size = 45, width = SCREEN_WIDTH * .4, align = "right")
+            arcade.draw_text(self.initials[1], 0, SCREEN_HEIGHT * .5, \
+                color = self.initials_colors[1], font_size = 45, width = SCREEN_WIDTH, align = "center")
+            arcade.draw_text(self.initials[2], SCREEN_WIDTH * .6, SCREEN_HEIGHT * .5, \
+                color = self.initials_colors[2], font_size = 45, width = SCREEN_WIDTH * .4, align = "left")
+        else:
+            arcade.draw_text(f"Your score was {self.score}\nPress Enter to return to title screen.", 
+                0, SCREEN_HEIGHT * 0.4, font_size = 25, width = SCREEN_WIDTH, align = "center")
+        
+    def on_key_press(self, key, moddifiers):
+        # Left and Right will change which initial is being modified,
+        # setting the colors accordingly
+        if key == arcade.key.LEFT:
+            self.initials_colors[self.selected_initial] = arcade.color.WHITE
+            self.selected_initial -= 1
+            if self.selected_initial < 0:
+                self.selected_initial = 2
+            self.initials_colors[self.selected_initial] = arcade.color.RED
+        elif key == arcade.key.RIGHT:
+            self.initials_colors[self.selected_initial] = arcade.color.WHITE
+            self.selected_initial += 1
+            if self.selected_initial > 2:
+                self.selected_initial = 0
+            self.initials_colors[self.selected_initial] = arcade.color.RED
+        
+        # Up and Down will the change the character displayed
+        elif key == arcade.key.UP:
+            new_char = chr(ord(self.initials[self.selected_initial]) + 1)
+            if ord(new_char) > ord('Z'):
+                new_char = 'A'
+            self.initials[self.selected_initial] = new_char
+        elif key == arcade.key.DOWN:
+            new_char = chr(ord(self.initials[self.selected_initial]) - 1)
+            if ord(new_char) < ord('A'):
+                new_char = 'Z'
+            self.initials[self.selected_initial] = new_char
+
+    def on_key_release(self, key, modifiers):
+        if key == arcade.key.ENTER:
+            if self.new_high_score:
+                # Combine the initials into a single string
+                name = self.initials[0] + self.initials[1] + self.initials[2]
+                # Save the score to the database
+                save_score(name, self.score, self.replace_score_id)
+            title = TitleView()
+            title.setup()
+            self.window.show_view(title)
+
+class HighScoreView(arcade.View):
+    def __init__(self):
+        super().__init__()
+
+    def setup(self):
+        # Ensure the most up-to-date scores are loaded
+        load_game()
+
+    def on_draw(self):
+        arcade.start_render()
+        arcade.draw_text("HIGH SCORES", 0, SCREEN_HEIGHT * .8, font_size = 25, \
+                         width = SCREEN_WIDTH, align = "center")
+        score_rank = 1
+        print_y = SCREEN_HEIGHT * .7
+        line_height = 50
+        global high_scores
+        for score in high_scores:
+            arcade.draw_text(
+                f"{score_rank}. {high_scores[score_rank - 1][1]}: {high_scores[score_rank - 1][2]}", \
+                0, print_y, font_size = 30, width = SCREEN_WIDTH, align = "center")
+            score_rank += 1
+            print_y -= line_height
+
+        arcade.draw_text("Press ENTER to return", 0, SCREEN_HEIGHT * .15, \
+                         font_size = 12, width = SCREEN_WIDTH, align = "center")
         
     def on_key_release(self, key, modifiers):
         if key == arcade.key.ENTER:
@@ -639,7 +746,67 @@ class GameOverView(arcade.View):
             title.setup()
             self.window.show_view(title)
 
+# Reads all the scores from the database into an easily accessible list
+def load_game():
+    global high_scores
+    global save_db
+    high_scores = save_db.execute("SELECT * FROM SCORES ORDER BY SCORE DESC").fetchall()
+
+# Updates the leaderboard with the given name and score, replacing the existing
+# score represented by replace_id in the database
+def save_score(name, score, replace_id):
+    global save_db
+    save_db.execute(f'''UPDATE SCORES SET NAME = "{name}", SCORE = {score}
+                    WHERE ID = {replace_id}''')
+    save_db.commit()
+
+# Ensures that a valid save file exists. Used in init_save to overwrite potentially
+# corrupted save files with brand new ones.
+# MUST UPDATE LATER! Currently always returns false in order to get a fresh save
+# file on every boot for testing purposes.
+def validate_save():
+    return False
+
+# Initializes a new save file if one doesn't already exist,
+# populating the leaderboard with default values
+def init_save():
+    global save_db
+    save_db = sqlite3.connect(DB_FILENAME)
+    if not validate_save():
+        if os.path.exists(DB_FILENAME):
+            os.remove(DB_FILENAME)
+            save_db = sqlite3.connect(DB_FILENAME)
+        save_db.execute('''CREATE TABLE SCORES (
+                            ID INTEGER PRIMARY KEY,
+                            NAME TEXT NOT NULL,
+                            SCORE INT NOT NULL
+                        )''')
+        save_db.execute('''INSERT INTO SCORES(NAME, SCORE)
+                            VALUES("test01", 1)''')
+        save_db.execute('''INSERT INTO SCORES(NAME, SCORE)
+                            VALUES("test02", 2)''')
+        save_db.execute('''INSERT INTO SCORES(NAME, SCORE)
+                            VALUES("test03", 3)''')
+        save_db.execute('''INSERT INTO SCORES(NAME, SCORE)
+                            VALUES("test04", 4)''')
+        save_db.execute('''INSERT INTO SCORES(NAME, SCORE)
+                            VALUES("test05", 5)''')
+        save_db.execute('''INSERT INTO SCORES(NAME, SCORE)
+                            VALUES("test06", 6)''')
+        save_db.execute('''INSERT INTO SCORES(NAME, SCORE)
+                            VALUES("test07", 7)''')
+        save_db.execute('''INSERT INTO SCORES(NAME, SCORE)
+                            VALUES("test08", 8)''')
+        save_db.execute('''INSERT INTO SCORES(NAME, SCORE)
+                            VALUES("test09", 9)''')
+        save_db.execute('''INSERT INTO SCORES(NAME, SCORE)
+                            VALUES("test10", 10)''')
+        save_db.commit()
+
+
 def main():
+    init_save()
+    load_game()
     window = SpaceGameWindow()
     title = TitleView()
     title.setup()
