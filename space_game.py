@@ -805,30 +805,31 @@ class GameOverView(arcade.View):
     def on_key_press(self, key, moddifiers):
         # Left and Right will change which initial is being modified,
         # setting the colors accordingly
-        if key == arcade.key.LEFT:
-            self.initials_colors[self.selected_initial] = arcade.color.WHITE
-            self.selected_initial -= 1
-            if self.selected_initial < 0:
-                self.selected_initial = 2
-            self.initials_colors[self.selected_initial] = arcade.color.RED
-        elif key == arcade.key.RIGHT:
-            self.initials_colors[self.selected_initial] = arcade.color.WHITE
-            self.selected_initial += 1
-            if self.selected_initial > 2:
-                self.selected_initial = 0
-            self.initials_colors[self.selected_initial] = arcade.color.RED
-        
-        # Up and Down will the change the character displayed
-        elif key == arcade.key.UP:
-            new_char = chr(ord(self.initials[self.selected_initial]) + 1)
-            if ord(new_char) > ord('Z'):
-                new_char = 'A'
-            self.initials[self.selected_initial] = new_char
-        elif key == arcade.key.DOWN:
-            new_char = chr(ord(self.initials[self.selected_initial]) - 1)
-            if ord(new_char) < ord('A'):
-                new_char = 'Z'
-            self.initials[self.selected_initial] = new_char
+        if self.new_high_score:
+            if key == arcade.key.LEFT:
+                self.initials_colors[self.selected_initial] = arcade.color.WHITE
+                self.selected_initial -= 1
+                if self.selected_initial < 0:
+                    self.selected_initial = 2
+                self.initials_colors[self.selected_initial] = arcade.color.RED
+            elif key == arcade.key.RIGHT:
+                self.initials_colors[self.selected_initial] = arcade.color.WHITE
+                self.selected_initial += 1
+                if self.selected_initial > 2:
+                    self.selected_initial = 0
+                self.initials_colors[self.selected_initial] = arcade.color.RED
+            
+            # Up and Down will the change the character displayed
+            elif key == arcade.key.UP:
+                new_char = chr(ord(self.initials[self.selected_initial]) + 1)
+                if ord(new_char) > ord('Z'):
+                    new_char = 'A'
+                self.initials[self.selected_initial] = new_char
+            elif key == arcade.key.DOWN:
+                new_char = chr(ord(self.initials[self.selected_initial]) - 1)
+                if ord(new_char) < ord('A'):
+                    new_char = 'Z'
+                self.initials[self.selected_initial] = new_char
 
     def on_key_release(self, key, modifiers):
         if key == arcade.key.ENTER:
