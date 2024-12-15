@@ -82,8 +82,9 @@ bulletSpeed = 7
 
 # Bullet types and their stats
 BULLET_STATS = {
-    "player_basic": { "velocity_x": (0, 0), "velocity_y": (bulletSpeed, bulletSpeed), "friendly": True},
-    "enemy_basic": { "velocity_x": (0, 0), "velocity_y": (-3, -1), "friendly": False}
+    "player_basic": { "velocity_x": (0, 0), "velocity_y": (bulletSpeed, bulletSpeed), "friendly": True },
+    "enemy_basic": { "velocity_x": (0, 0), "velocity_y": (-8, -8), "friendly": False },
+    "enemy_tracker": { "velocity_x": (0, 0), "velocity_y": (0, 0), "friendly": False }
 }
 
 # Star properties; sizes must be integers
@@ -149,7 +150,7 @@ class SpaceGameWindow(arcade.Window):
 # Enemy types and their stats
 ENEMY_STATS = {
     "basic_straight": 
-        { "health": 1, "velocity_x": (0, 0), "velocity_y": (4, -2), "score": 100 },
+        { "health": 1, "velocity_x": (0, 0), "velocity_y": (-4, -2), "score": 100 },
     "basic_zigzag": 
         { "health": 1, "velocity_x": (-3, 3), "velocity_y": (-3, -1), "score": 200 },
     "basic_wave": 
@@ -161,6 +162,8 @@ ENEMY_STATS = {
     "basic_dodge": 
         { "health": 1, "velocity_x": (0, 0), "velocity_y": (-3, -1), "score": 100 },
 }
+
+SHOOT_COOLDOWN = 40
 
 class Enemy(arcade.Sprite):
     def __init__(self, type):
@@ -176,9 +179,12 @@ class Enemy(arcade.Sprite):
         self.health = ENEMY_STATS[type]["health"]
         self.strength = 1 # Dictates how much damage this enemy does when colliding with player
         self.score = ENEMY_STATS[type]["score"]
+        self.shooting = False
+        self.shoot_cooldown = SHOOT_COOLDOWN
 
         if type == "basic_zigzag":
             self.timer = random.uniform(120, 240)
+            self.tolerance = 200
         elif type == "basic_wave":
             self.initial_change_x = self.change_x
             self.sine_input = 0.05
@@ -197,8 +203,17 @@ class Enemy(arcade.Sprite):
             self.dodge_count = random.randint(1, 4)
 
     def update(self):
-        if self.type == "basic_zigzag":
+        if self.type == "basic_straight":
+            self.shoot_cooldown -= 1
+            if self.shoot_cooldown < 0:
+                shoot_random_value = random.uniform(0, 100)
+                if shoot_random_value < 0.2:
+                    self.shooting = True
+                    self.shoot_cooldown = SHOOT_COOLDOWN
+
+        elif self.type == "basic_zigzag":
             self.timer -= 1
+            self.shoot_cooldown -= 1
             if self.timer < 0:
                 self.change_x = -self.change_x
                 self.timer = random.uniform(120, 240)
@@ -208,6 +223,7 @@ class Enemy(arcade.Sprite):
             self.sine_input += self.sine_input_change
 
         elif self.type == "basic_wait":
+            self.shoot_cooldown -= 1
             if self.change_y < 0 and not self.zoom:
                 self.timer_move -= 1
                 if self.timer_move < 0:
@@ -230,7 +246,6 @@ class Enemy(arcade.Sprite):
                     self.dodging = False
                     self.timer = self.dodge_time
                     self.change_x = 0
-
         return super().update()
 
 
@@ -399,6 +414,8 @@ class SpaceGameView(arcade.View):
 
         # Spawn all entities
         self.spawn_entities(delta_time)
+
+        self.enemy_shooting()
     
     #Updates button press on release so that we dont continue moving
     def on_key_release(self, key, modifiers):
@@ -550,13 +567,24 @@ class SpaceGameView(arcade.View):
 
     # Spawns a new bullet of the given type (see BULLET_STATS above)
     def spawn_bullet(self, type, x, y):
+        friendly = BULLET_STATS[type]["friendly"]
         bullet = arcade.Sprite(":resources:images/space_shooter/laserRed01.png", 0.8)
         bullet.center_x = x
         bullet.center_y = y
         bullet.change_x = random.uniform(*BULLET_STATS[type]["velocity_x"])
         bullet.change_y = random.uniform(*BULLET_STATS[type]["velocity_y"])
-        bullet.friendly = BULLET_STATS[type]["friendly"]
+        bullet.friendly = friendly
         bullet.strength = 1
+
+        if type == "enemy_tracker":
+            angle = arcade.get_angle_degrees(
+                bullet.center_x, bullet.center_y,
+                self.player.center_x, self.player.center_y
+            )
+            bullet.change_x = 15 * math.sin(math.radians(angle))
+            bullet.change_y = 15 * math.cos(math.radians(angle))
+            bullet.angle = -angle
+
         self.bullet_list.append(bullet)
 
     # Contains all logic for spawning entities based on stage, time passed, etc.
@@ -612,6 +640,26 @@ class SpaceGameView(arcade.View):
     def collect_collectable(self, player, type):
         if type == "health_small":
             player.health += 1
+
+    def enemy_shooting(self):
+        for enemy in self.enemy_list:
+            # Do a special check for zigzaggers who only shoot when the player is below them
+            if enemy.type == "basic_zigzag" and enemy.shoot_cooldown < 0:
+                if abs(enemy.center_x - self.player.center_x) < enemy.tolerance:
+                    random_value = random.uniform(0, 100)
+                    if random_value < 1:
+                        enemy.shooting = True
+                        enemy.shoot_cooldown = SHOOT_COOLDOWN
+
+            # Do a special check for waiters who always shoot when waiting
+            elif enemy.type == "basic_wait" and enemy.change_y == 0 \
+                    and enemy.shoot_cooldown < 0:
+                self.spawn_bullet("enemy_tracker", enemy.center_x, enemy.center_y)
+                enemy.shoot_cooldown = SHOOT_COOLDOWN // 4
+
+            if enemy.shooting and not enemy.type == "basic_wait":
+                enemy.shooting = False
+                self.spawn_bullet("enemy_basic", enemy.center_x, enemy.center_y)
 
 START_GAME = 0
 HIGH_SCORE = 1
