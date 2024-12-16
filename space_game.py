@@ -614,6 +614,7 @@ class SpaceGameView(arcade.View):
                 for bullet in player_bullet_collision:
                     if bullet.friendly == False:
                         player.health -= bullet.strength
+                        self.spawn_explosion(bullet.center_x, bullet.center_y, "small")
                         bullet.remove_from_sprite_lists()
 
                 # Check for player-obstacle collisions
@@ -648,6 +649,8 @@ class SpaceGameView(arcade.View):
                         self.set_stage()
                         enemy.remove_from_sprite_lists()
                         self.spawn_explosion(enemy.center_x, enemy.center_y)
+                    else:
+                        self.spawn_explosion(bullet.center_x, bullet.center_y, "small")
                     bullet.remove_from_sprite_lists()
                     
                     # Break so one bullet doesn't affect multiple enemies
@@ -664,6 +667,8 @@ class SpaceGameView(arcade.View):
                     if obstacle.health <= 0:
                         self.spawn_explosion(obstacle.center_x, obstacle.center_y)
                         obstacle.remove_from_sprite_lists()
+                    else:
+                        self.spawn_explosion(bullet.center_x, bullet.center_y, "small")
                     bullet.remove_from_sprite_lists()
                     break
 
@@ -685,12 +690,17 @@ class SpaceGameView(arcade.View):
                 self.stage += 1
                 self.between_stage_timer = BETWEEN_STAGE_TIMER
     
-    def spawn_explosion(self, center_x, center_y):
-        explosion = arcade.load_animated_gif("./res/img/explosion1.gif")
+    def spawn_explosion(self, center_x, center_y, type = "large"):
+        if type == "large":
+            explosion = arcade.load_animated_gif("./res/img/explosion1.gif")
+            explosion.scale = 1
+            explosion.timer = 60
+        else:
+            explosion = arcade.Sprite("./res/img/spark.png")
+            explosion.scale = 0.5
+            explosion.timer = 3
         explosion.center_x = center_x
         explosion.center_y = center_y
-        explosion.scale = 1
-        explosion.timer = 60
         self.explosion_list.append(explosion)
 
     # Spawns a new enemy of the given type (see ENEMY_STATS above)
