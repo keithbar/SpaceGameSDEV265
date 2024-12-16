@@ -146,7 +146,7 @@ OBSTACLES_ON_STAGE = [
     ["small", "small_fast", "medium", "medium_fast", "large", "large_fast", "long", "long_fast"]
 ]
 COLLECTABLES_ON_STAGE = [
-    ["health_small", "health_small", "health_small", "fire_rate_up", "invincible"],
+    ["health_small", "health_small", "health_small", "fire_rate_up"],
     ["health_small", "health_small", "health_small", "defense_up", "fire_rate_up",
         "invincible"],
     ["health_small", "health_small", "health_small", "defense_up", "fire_rate_up",
@@ -435,11 +435,11 @@ class SpaceGameView(arcade.View):
 
         # Draw hud on top of everything else
         self.hud_frame.draw()
+        arcade.draw_text(f"Score: {self.score}", 20, 180, arcade.color.WHITE, 30,
+                         font_name = "Kenney Mini Square")
+        arcade.draw_text(f"Stage: {self.stage}", 20, 80, arcade.color.WHITE, 30,
+                         font_name = "Kenney Mini Square")
         
-        # This will display the score and text for our game
-        arcade.draw_text(f"Score: {self.score}", 10, SCREEN_HEIGHT - 50, arcade.color.WHITE, 20)
-        arcade.draw_text(f"Stage: {self.stage}", SCREEN_WIDTH - 130, SCREEN_HEIGHT - 50, arcade.color.WHITE, 20)
-
         # Debug info
         global debug_mode
         if debug_mode:
@@ -466,7 +466,7 @@ class SpaceGameView(arcade.View):
             # make it RGBA, allowing for transparency.
             arcade.draw_lrtb_rectangle_filled(0, SCREEN_WIDTH, SCREEN_HEIGHT, 0, arcade.color.BLACK + (200,))
             arcade.draw_text("PAUSED", 0, SCREEN_HEIGHT / 2, font_size = 30,
-                width = SCREEN_WIDTH, align = "center")
+                width = SCREEN_WIDTH, align = "center", font_name = "Kenney Pixel Square")
 
     def on_key_press(self, key, modifiers):
         if key == arcade.key.LEFT:
@@ -958,37 +958,48 @@ class TitleView(arcade.View):
     def __init__(self):
         super().__init__()
         self.selected_action = START_GAME
+        self.bg_moon = None
 
     # setup is currently redundant, left it here in case we want to
     # do more with it in the future
     def setup(self):
         self.selected_action = START_GAME
+        self.bg_moon = self.bg_moon = arcade.Sprite("./res/img/bg_moon.png", 
+            center_x = SCREEN_WIDTH // 2, center_y = 0)
 
     def on_draw(self):
         arcade.start_render()
 
+        self.bg_moon.draw()
+
         arcade.draw_text("SDEV 265\nSPACE GAME", 0, SCREEN_HEIGHT * 0.7,
-            font_size = 50, width = SCREEN_WIDTH, align = "center")
+            font_size = 50, width = SCREEN_WIDTH, align = "center",
+            font_name = "Kenney Blocks")
         
         # Values to make changing text layout easier
         option_font_size = 25
         option_line_height = 35
         option_y_start = SCREEN_HEIGHT * 0.4
+        options_font = "Kenney Mini Square"
 
         text_start_game = arcade.Text(" Start Game ", 0, option_y_start, 
-            font_size = option_font_size, width = SCREEN_WIDTH, align = "center")
+            font_size = option_font_size, width = SCREEN_WIDTH, align = "center",
+            font_name = options_font)
         text_start_game.draw()
 
         text_high_score = arcade.Text(" High Scores ", 0, option_y_start - option_line_height, 
-            font_size = option_font_size, width = SCREEN_WIDTH, align = "center")
+            font_size = option_font_size, width = SCREEN_WIDTH, align = "center",
+            font_name = options_font)
         text_high_score.draw()
 
         text_settings = arcade.Text(" Settings ", 0, option_y_start - option_line_height * 2, 
-            font_size = option_font_size, width = SCREEN_WIDTH, align = "center")
+            font_size = option_font_size, width = SCREEN_WIDTH, align = "center",
+            font_name = options_font)
         text_settings.draw()
 
         text_quit = arcade.Text(" Quit ", 0, option_y_start - option_line_height * 3, 
-            font_size = option_font_size, width = SCREEN_WIDTH, align = "center")
+            font_size = option_font_size, width = SCREEN_WIDTH, align = "center",
+            font_name = options_font)
         text_quit.draw()
         
         if self.selected_action == START_GAME:
@@ -1075,20 +1086,25 @@ class GameOverView(arcade.View):
     def on_draw(self):
         arcade.start_render()
         arcade.draw_text("GAME OVER", 0, SCREEN_HEIGHT * 0.7,
-            font_size = 50, width = SCREEN_WIDTH, align = "center")
+            font_size = 50, width = SCREEN_WIDTH, align = "center", font_name = "Kenney Rocket")
         if self.new_high_score:
             arcade.draw_text(f"Your score was {self.score}\nNew high score set!\nEnter your initials.", \
-                0, SCREEN_HEIGHT * 0.4, font_size = 25, width = SCREEN_WIDTH, align = "center")
+                0, SCREEN_HEIGHT * 0.4, font_size = 25, width = SCREEN_WIDTH, align = "center",
+                font_name = "Kenney Rocket")
             
             arcade.draw_text(self.initials[0], 0, SCREEN_HEIGHT * .5, \
-                color = self.initials_colors[0], font_size = 45, width = SCREEN_WIDTH * .4, align = "right")
+                color = self.initials_colors[0], font_size = 80, width = SCREEN_WIDTH * .4, align = "right",
+                font_name = "Kenney Blocks")
             arcade.draw_text(self.initials[1], 0, SCREEN_HEIGHT * .5, \
-                color = self.initials_colors[1], font_size = 45, width = SCREEN_WIDTH, align = "center")
+                color = self.initials_colors[1], font_size = 80, width = SCREEN_WIDTH, align = "center",
+                font_name = "Kenney Blocks")
             arcade.draw_text(self.initials[2], SCREEN_WIDTH * .6, SCREEN_HEIGHT * .5, \
-                color = self.initials_colors[2], font_size = 45, width = SCREEN_WIDTH * .4, align = "left")
+                color = self.initials_colors[2], font_size = 80, width = SCREEN_WIDTH * .4, align = "left",
+                font_name = "Kenney Blocks")
         else:
             arcade.draw_text(f"Your score was {self.score}\nPress Enter to return to title screen.", 
-                0, SCREEN_HEIGHT * 0.4, font_size = 25, width = SCREEN_WIDTH, align = "center")
+                0, SCREEN_HEIGHT * 0.4, font_size = 25, width = SCREEN_WIDTH, align = "center",
+                font_name = "Kenney Rocket")
         
     def on_key_press(self, key, moddifiers):
         # Left and Right will change which initial is being modified,
@@ -1133,15 +1149,21 @@ class GameOverView(arcade.View):
 class HighScoreView(arcade.View):
     def __init__(self):
         super().__init__()
+        self.bg_moon = None
 
     def setup(self):
         # Ensure the most up-to-date scores are loaded
         load_game()
+        self.bg_moon = arcade.Sprite(filename = "./res/img/bg_moon.png", scale = 2, center_x = -150, center_y = SCREEN_HEIGHT // 2)
+        self.bg_moon.color = arcade.color.RED
+        self.bg_moon.alpha = 100
 
     def on_draw(self):
         arcade.start_render()
+        self.bg_moon.draw()
         arcade.draw_text("HIGH SCORES", 0, SCREEN_HEIGHT * .8, font_size = 25, \
-                         width = SCREEN_WIDTH, align = "center")
+                         width = SCREEN_WIDTH, align = "center",
+                         font_name = "Kenney Rocket")
         score_rank = 1
         print_y = SCREEN_HEIGHT * .7
         line_height = 50
@@ -1149,12 +1171,14 @@ class HighScoreView(arcade.View):
         for score in high_scores:
             arcade.draw_text(
                 f"{score_rank}. {high_scores[score_rank - 1][1]}: {high_scores[score_rank - 1][2]}", \
-                0, print_y, font_size = 30, width = SCREEN_WIDTH, align = "center")
+                0, print_y, font_size = 30, width = SCREEN_WIDTH, align = "center",
+                font_name = "Kenney High Square")
             score_rank += 1
             print_y -= line_height
 
         arcade.draw_text("Press ENTER to return", 0, SCREEN_HEIGHT * .15, \
-                         font_size = 12, width = SCREEN_WIDTH, align = "center")
+                         font_size = 12, width = SCREEN_WIDTH, align = "center",
+                         font_name = "Kenney Pixel Square")
         
     def on_key_release(self, key, modifiers):
         if key == arcade.key.ENTER:
@@ -1177,16 +1201,17 @@ class SettingsView(arcade.View):
         arcade.start_render()
         print_y = SCREEN_HEIGHT * .7
         line_height = 45
+        font_name = "Kenney Pixel Square"
         text_delete_scores = arcade.Text("  Reset high scores  ", 0, print_y, \
-            font_size = 25, width = SCREEN_WIDTH, align = "center")
+            font_size = 25, width = SCREEN_WIDTH, align = "center", font_name = font_name)
         text_return_to_tile = arcade.Text("  Return to title screen  ", 0, print_y - line_height * 5, \
-            font_size = 25, width = SCREEN_WIDTH, align = "center")
+            font_size = 25, width = SCREEN_WIDTH, align = "center", font_name = font_name)
         text_confirmation = arcade.Text("Are you sure?", 0, print_y - line_height, \
-            font_size = 25, width = SCREEN_WIDTH, align = "center")
+            font_size = 25, width = SCREEN_WIDTH, align = "center", font_name = font_name)
         text_confirmation_no = arcade.Text("  No  ", 0, print_y - line_height * 2, \
-            font_size = 25, width = SCREEN_WIDTH, align = "center")
+            font_size = 25, width = SCREEN_WIDTH, align = "center", font_name = font_name)
         text_confirmation_yes = arcade.Text("  Yes  ", 0, print_y - line_height * 3, \
-            font_size = 25, width = SCREEN_WIDTH, align = "center")
+            font_size = 25, width = SCREEN_WIDTH, align = "center", font_name = font_name)
         
         text_delete_scores.draw()
         text_return_to_tile.draw()
