@@ -112,7 +112,7 @@ STAR_SIZE_MIN = 1
 STAR_SIZE_MAX = 6
 STAR_SPEED_MIN = -1
 STAR_SPEED_MAX = -5
-NUM_STARS = 250
+NUM_STARS = 100
 
 # Values related to stages
 KILL_COUNT_THRESHOLDS = [ 5, 15, 35, 50, 65, 80, 100, 125, 150, 200 ]
@@ -243,11 +243,25 @@ SHOOT_COOLDOWN = 40
 
 class Enemy(arcade.Sprite):
     def __init__(self, type):
-        filename = ":resources:images/space_shooter/playerShip3_orange.png"
-        scale = 0.8
         flipped_vertically = True
+        if type == "basic_straight":
+            filename = "./res/img/EnemyShip1.png"
+        elif type == "basic_zigzag":
+            filename = "./res/img/EnemyShip2.png"
+        elif type == "basic_wave":
+            filename = "./res/img/EnemyShip3.png"
+            flipped_vertically = False
+        elif type == "basic_wait":
+            filename = "./res/img/EnemyShip4.png"
+        elif type == "basic_fast":
+            filename = "./res/img/EnemyShip1.png"
+        elif type == "basic_dodge":
+            filename = "./res/img/EnemyShip5.png"
+        else:
+            filename = ":resources:images/space_shooter/playerShip3_orange.png"
+        scale = 0.8
         super().__init__(filename, scale, flipped_vertically = flipped_vertically)
-        self.center_x = random.uniform(GAME_AREA_LEFT, GAME_AREA_RIGHT)
+        self.center_x = random.uniform(GAME_AREA_LEFT + 20, GAME_AREA_RIGHT - 20)
         self.center_y = SCREEN_HEIGHT + self.height
         self.change_x = random.uniform(*ENEMY_STATS[type]["velocity_x"])
         self.change_y = random.uniform(*ENEMY_STATS[type]["velocity_y"])
@@ -400,13 +414,6 @@ class SpaceGameView(arcade.View):
         # Spawn the initial stars
         for _ in range(NUM_STARS):
             self.spawn_star(True)
-
-        # Spawns some objects for testing purposes
-        # for _ in range(5):
-        #     self.spawn_enemy("basic_straight")
-        #     self.spawn_obstacle("small")
-        #     self.spawn_collectable("health_small")
-        # self.spawn_bullet("enemy_basic", 1000, 1080)
         
     # Drawing method that is called on every frame
     def on_draw(self):
