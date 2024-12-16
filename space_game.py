@@ -114,9 +114,62 @@ STAR_SPEED_MIN = -1
 STAR_SPEED_MAX = -5
 NUM_STARS = 250
 
-# Kill counts required to complete each stage
-KILL_COUNT_THRESHOLDS = [ 1, 2 ]
-MAX_STAGE = 3
+# Values related to stages
+KILL_COUNT_THRESHOLDS = [ 5, 15, 35, 50, 65, 80, 100, 125, 150, 200 ]
+ENEMY_SPAWN_TIMERS = [ 180, 180, 150, 120, 120, 120, 90, 90, 60, 30]
+OBSTACLE_SPAWN_TIMERS = [ 480, 480, 420, 360, 360, 300, 240, 240, 180, 120 ]
+COLLECTABLE_SPAWN_TIMERS = [ 240, 240, 300, 360, 480, 720, 1200, 1800, 2400, 5100]
+MAX_STAGE = 10
+BETWEEN_STAGE_TIMER = 90
+ENEMIES_ON_STAGE = [
+    ["basic_straight", "basic_straight", "basic_straight", "basic_wave"],
+    ["basic_straight", "basic_straight", "basic_wave", "basic_zigzag"],
+    ["basic_straight", "basic_fast", "basic_wave", "basic_zigzag"],
+    ["basic_fast", "basic_fast", "basic_wave", "basic_zigzag"],
+    ["basic_fast", "basic_wait", "basic_wave", "basic_zigzag"],
+    ["basic_fast", "basic_wait", "basic_wave", "basic_wait"],
+    ["basic_dodge", "basic_wait", "basic_wave", "basic_wait"],
+    ["basic_dodge", "basic_wait", "basic_wave", "basic_wait", "basic_dodge"],
+    ["basic_dodge", "basic_wait", "basic_zigzag", "basic_wait", "basic_dodge"],
+    ["basic_zigzag", "basic_wave", "basic_wait", "basic_fast", "basic_dodge"]
+]
+OBSTACLES_ON_STAGE = [
+    ["small"],
+    ["small"],
+    ["small", "medium"],
+    ["small", "small_fast", "medium", "medium"],
+    ["small_fast", "medium", "medium"],
+    ["small_fast", "medium", "large"],
+    ["medium_fast", "medium", "large"],
+    ["medium_fast", "large", "long"],
+    ["medium_fast", "large_fast", "long"],
+    ["small", "small_fast", "medium", "medium_fast", "large", "large_fast", "long", "long_fast"]
+]
+COLLECTABLES_ON_STAGE = [
+    ["health_small", "health_small", "health_small", "fire_rate_up", "invincible"],
+    ["health_small", "health_small", "health_small", "defense_up", "fire_rate_up",
+        "invincible"],
+    ["health_small", "health_small", "health_small", "defense_up", "fire_rate_up",
+        "invincible"],
+    ["health_small", "health_small", "health_small", "fire_rate_up", "invincible"],
+    ["health_small", "speed_up", "speed_down", "fire_rate_up", "fire_rate_down"],
+    ["health_small", "speed_up", "speed_down", "fire_rate_up", "fire_rate_down", 
+        "bullet_speed_up", "bullet_speed_down"],
+    ["health_small", "health_large", "speed_up", "speed_down", "fire_rate_up", 
+        "fire_rate_down", "bullet_speed_up", "bullet_speed_down", "defense_up",
+        "defense_down"],
+    ["health_small", "health_small", "health_small", "health_large", "speed_up",
+        "speed_down", "fire_rate_up", "fire_rate_down", "bullet_speed_up",
+        "bullet_speed_down", "destroy_all_enemies", "defense_up", "defense_down"],
+    ["health_small", "health_small", "health_small", "health_small", "health_small",
+        "health_large", "speed_up", "speed_down", "fire_rate_up", "fire_rate_down",
+        "bullet_speed_up", "bullet_speed_down", "destroy_all_enemies", "invincible",
+        "defense_down"],
+    ["health_small", "health_small", "health_small", "health_small", "health_small",
+        "health_large", "speed_up", "speed_down", "speed_down", "fire_rate_up",
+        "fire_rate_down", "fire_rate_down", "bullet_speed_up", "bullet_speed_down",
+        "destroy_all_enemies", "invincible", "defense_up", "defense_down"]
+]
 
 # Save data values
 # Filename for the savefile
@@ -219,9 +272,9 @@ class Enemy(arcade.Sprite):
         elif type == "basic_dodge":
             self.dodging = False
             self.dodge_direction = 1
-            self.tolerance = 100
-            self.dodge_time = 10
-            self.timer = 20
+            self.tolerance = 75
+            self.dodge_time = 5
+            self.timer = 0
             self.dodge_speed = 25
             self.dodge_count = random.randint(1, 4)
 
@@ -271,7 +324,6 @@ class Enemy(arcade.Sprite):
                     self.change_x = 0
         return super().update()
 
-
 # Class for the main game loop, extends Arcade's View class
 class SpaceGameView(arcade.View):
     def __init__(self):
@@ -287,14 +339,9 @@ class SpaceGameView(arcade.View):
         self.hud_frame = None
         self.bg_moon = None
 
-        self.enemy_spawn_timer = 0            #TMJ These are the count down timers till a new set of enenmies will spawn 
-        self.enemy_spawn_interval = 3       #TMJ
-
-        self.obstacle_spawn_timer = 0         #TMJ These are the count down timers till a new set of obstacles will spawn 
-        self.obstacle_spawn_interval = 5      #TMJ
-
-        self.collectable_spawn_timer = 0      #TMJ These are the count down timers till a new set of obstacles will spawn 
-        self.collectable_spawn_interval = 5 #TMJ
+        self.enemy_spawn_timer = ENEMY_SPAWN_TIMERS[0]
+        self.obstacle_spawn_timer = OBSTACLE_SPAWN_TIMERS[0]
+        self.collectable_spawn_timer = COLLECTABLE_SPAWN_TIMERS[0]
         
         #This is for the enemies when implamented 
         self.enemy_list = None
@@ -303,9 +350,11 @@ class SpaceGameView(arcade.View):
         #initializes our score and sets us up to implament the game over when you lose and add new waves in the future
         self.score = 0
         self.kills = 0
-        self.game_over = False  
+        self.game_over = False
+        self.enemies_spawned = 0
         self.stage = 1
         self.paused = False
+        self.between_stage_timer = BETWEEN_STAGE_TIMER
 
     def setup(self):
         self.player_list = arcade.SpriteList()
@@ -322,9 +371,11 @@ class SpaceGameView(arcade.View):
             center_x = SCREEN_WIDTH // 2, center_y = -100)
         self.score = 0
         self.kills = 0
+        self.enemies_spawned = 0
         self.game_over = False  
         self.stage = 1
         self.paused = False
+        self.between_stage_timer = BETWEEN_STAGE_TIMER
          
         # This is our player I tried to find different sprites but this is what I have for now 
         self.player = arcade.Sprite(":resources:images/space_shooter/playerShip1_orange.png", 0.8)
@@ -392,6 +443,9 @@ class SpaceGameView(arcade.View):
             arcade.draw_text(f"Bullet speed: {self.player.current_bullet_speed}", 10, 110)
             arcade.draw_text(f"Speed: {self.player.current_speed}", 10, 140)
             arcade.draw_text(f"Invincible timer: {self.player.invincible_timer}", 10, 170)
+            arcade.draw_text(f"Between stage timer: {self.between_stage_timer}", 10, 200)
+            arcade.draw_text(f"enemy spawn timer: {self.enemy_spawn_timer}", 10, 230)
+            arcade.draw_text(f"enemy spawn count: {self.enemies_spawned}", 10, 260)
             for enemy in self.enemy_list:
                 arcade.draw_text(f"Health: {enemy.health}", enemy.center_x + 20, enemy.center_y)
             for obstacle in self.obstacle_list:
@@ -456,6 +510,8 @@ class SpaceGameView(arcade.View):
         self.player.shoot_cooldown -= 1
         self.player.invincible_timer -= 1
 
+        self.between_stage_timer -= 1
+
         self.star_list.update()
         self.player_list.update()
         self.bullet_list.update()
@@ -483,7 +539,7 @@ class SpaceGameView(arcade.View):
         self.check_collision()
 
         # Spawn all entities
-        self.spawn_entities(delta_time)
+        self.spawn_entities()
 
         self.enemy_shooting()
     
@@ -507,7 +563,9 @@ class SpaceGameView(arcade.View):
         # Removes enemies that are off screen
         for enemy in self.enemy_list:
             if enemy.top < 0:
+                type = enemy.type
                 enemy.remove_from_sprite_lists()
+                self.spawn_enemy(type)
 
         # Removes obstacles that are off screen
         for obstacle in self.obstacle_list:
@@ -576,9 +634,7 @@ class SpaceGameView(arcade.View):
                     if enemy.health <= 0:
                         self.score += enemy.score
                         self.kills += 1
-                        if self.stage < MAX_STAGE and \
-                            self.kills >= KILL_COUNT_THRESHOLDS[self.stage - 1]:
-                                self.stage += 1
+                        self.set_stage()
                         enemy.remove_from_sprite_lists()
                     bullet.remove_from_sprite_lists()
                     
@@ -608,7 +664,14 @@ class SpaceGameView(arcade.View):
                             enemy.dodging = True
                             enemy.dodge_direction = enemy.center_x - bullet.center_x
                             enemy.dodge_count -= 1
+                            enemy.timer = enemy.dodge_time
 
+    def set_stage(self):
+        if self.stage < MAX_STAGE and \
+            self.kills >= KILL_COUNT_THRESHOLDS[self.stage - 1]:
+                self.stage += 1
+                self.between_stage_timer = BETWEEN_STAGE_TIMER
+    
     # Spawns a new enemy of the given type (see ENEMY_STATS above)
     def spawn_enemy(self, type):
         enemy = Enemy(type)
@@ -677,24 +740,35 @@ class SpaceGameView(arcade.View):
         self.bullet_list.append(bullet)
 
     # Contains all logic for spawning entities based on stage, time passed, etc.
-    def spawn_entities(self, delta_time):
-        self.enemy_spawn_timer += delta_time                        #TMJ This is where the timers are compared that will spawn more enemies 
-        if self.enemy_spawn_timer >= self.enemy_spawn_interval:     #TMJ
-            enemy_type = random.choice(list(ENEMY_STATS.keys()))    #TMJ
-            self.spawn_enemy(enemy_type)                            #TMJ
-            self.enemy_spawn_timer = 0                              #TMJ
+    def spawn_entities(self):
+        if self.between_stage_timer < 0:
 
-        self.obstacle_spawn_timer += delta_time                         #TMJ This is where the timers are compared that will spawn more enemies 
-        if self.obstacle_spawn_timer >= self.obstacle_spawn_interval:   #TMJ
-            obstacle_type = random.choice(list(OBSTACLE_STATS.keys()))  #TMJ
-            self.spawn_obstacle(obstacle_type)                          #TMJ
-            self.obstacle_spawn_timer = 0                               #TMJ
+            # Spawn enemies
+            self.enemy_spawn_timer -= 1
+            if self.enemy_spawn_timer < 0 and \
+                self.enemies_spawned < KILL_COUNT_THRESHOLDS[self.stage - 1]:
+                    enemy_type = random.choice(list(ENEMIES_ON_STAGE[self.stage - 1]))
+                    self.spawn_enemy(enemy_type)
+                    new_timer = ENEMY_SPAWN_TIMERS[self.stage - 1]
+                    self.enemy_spawn_timer = random.uniform(new_timer * 0.9, new_timer * 1.1)
+                    self.enemies_spawned += 1
 
-        self.collectable_spawn_timer += delta_time                            #TMJ This is where the timers are compared that will spawn more collectables 
-        if self.collectable_spawn_timer >= self.collectable_spawn_interval:   #TMJ
-            collectable_type = random.choice(list(COLLECTABLE_STATS.keys()))  #TMJ
-            self.spawn_collectable(collectable_type)                          #TMJ
-            self.collectable_spawn_timer = 0   
+            # Spawn obstacles
+            self.obstacle_spawn_timer -= 1
+            if self.obstacle_spawn_timer < 0:
+                obstacle_type = random.choice(list(OBSTACLES_ON_STAGE[self.stage - 1]))
+                self.spawn_obstacle(obstacle_type)
+                new_timer = OBSTACLE_SPAWN_TIMERS[self.stage - 1]
+                self.obstacle_spawn_timer = random.uniform(new_timer * 0.9, new_timer * 1.1)
+
+            # Spawn collectables
+            self.collectable_spawn_timer -= 1
+            if self.collectable_spawn_timer < 0:
+                collectable_type = random.choice(list(COLLECTABLES_ON_STAGE[self.stage - 1]))
+                self.spawn_collectable(collectable_type)
+                new_timer = COLLECTABLE_SPAWN_TIMERS[self.stage - 1]
+                self.collectable_spawn_timer = random.uniform(new_timer * 0.9, new_timer * 1.1)
+                
 
     # Spawns a new background star. If part of the initial batch of stars
     # spawned at beginning of game, it will be place on the screen randomly.
@@ -778,8 +852,10 @@ class SpaceGameView(arcade.View):
         elif type == "destroy_all_enemies":
             for enemy in self.enemy_list:
                 self.score += enemy.score
+                self.kills += 1
             self.enemy_list.clear()
             self.obstacle_list.clear()
+            self.set_stage()
         elif type == "invincible":
             self.player.invincible_timer = INVINCIBLE_TIMER
 
