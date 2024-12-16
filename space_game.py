@@ -259,7 +259,7 @@ class Enemy(arcade.Sprite):
             filename = "./res/img/EnemyShip5.png"
         else:
             filename = ":resources:images/space_shooter/playerShip3_orange.png"
-        scale = 0.8
+        scale = 1
         super().__init__(filename, scale, flipped_vertically = flipped_vertically)
         self.center_x = random.uniform(GAME_AREA_LEFT + 20, GAME_AREA_RIGHT - 20)
         self.center_y = SCREEN_HEIGHT + self.height
@@ -394,7 +394,7 @@ class SpaceGameView(arcade.View):
         self.between_stage_timer = 0
          
         # This is our player I tried to find different sprites but this is what I have for now 
-        self.player = arcade.Sprite(":resources:images/space_shooter/playerShip1_orange.png", 0.8)
+        self.player = arcade.Sprite("./res/img/Player Ship.png")
         self.player.center_x = SCREEN_WIDTH // 2
         self.player.center_y = 200
         self.player.moving_left = False
@@ -714,17 +714,17 @@ class SpaceGameView(arcade.View):
     # Spawns a new obstacle of the given type (see OBSTACLE_STATS above)
     def spawn_obstacle(self, type):
         if type == "small" or type == "small_fast":
-            image = ":resources:images/space_shooter/meteorGrey_small2.png"
-            scale = 1
+            image = "./res/img/Space Meatball.png"
+            scale = 0.6
         elif type == "medium" or type == "medium_fast":
-            image = ":resources:images/space_shooter/meteorGrey_med1.png"
+            image = "./res/img/Space Meatball.png"
             scale = 1
         elif type == "large" or type == "large_fast":
-            image = ":resources:images/space_shooter/meteorGrey_big1.png"
-            scale = 1
+            image = "./res/img/Space Meatball.png"
+            scale = 2
         else:
-            image = ":resources:images/items/gold_4.png"
-            scale = 8
+            image = "./res/img/space_debris.png"
+            scale = 0.7
         obstacle = arcade.Sprite(image, scale)
         obstacle.center_x = random.uniform(GAME_AREA_LEFT, GAME_AREA_RIGHT)
         obstacle.center_y = SCREEN_HEIGHT + obstacle.height
@@ -738,7 +738,40 @@ class SpaceGameView(arcade.View):
 
     # Spawns a new collectable of the given type (see COLLECTABLE_STATS above)
     def spawn_collectable(self, type):
-        collectable = arcade.Sprite(":resources:images/items/coinGold.png", 0.5)
+        scale = 0.2
+        if type == "health_small":
+            filename = "./res/img/Gold.png"
+        elif type == "health_large":
+            filename = "./res/img/Gold.png"
+            scale = 2
+        elif type == "attack_up":
+            filename = "./res/img/Buff-Debbuf 13.png"
+        elif type == "attack_down":
+            filename = "./res/img/Buff-Debbuf 12.png"
+        elif type == "defense_up":
+            filename = "./res/img/Buff-Debbuf 3.png"
+        elif type == "defense_down":
+            filename = "./res/img/Buff-Debbuf 4.png"
+        elif type == "speed_up":
+            filename = "./res/img/Buff-Debbuf 10.png"
+        elif type == "speed_down":
+            filename = "./res/img/Buff-Debbuf 11.png"
+        elif type == "fire_rate_up":
+            filename = "./res/img/Buff-Debbuf 15.png"
+        elif type == "fire_rate_down":
+            filename = "./res/img/Buff-Debbuf 14.png"
+        elif type == "bullet_speed_up":
+            filename = "./res/img/Buff-Debbuf 8.png"
+        elif type == "bullet_speed_down":
+            filename = "./res/img/Buff-Debbuf 9.png"
+        elif type == "destroy_all_enemies":
+            filename = "./res/img/Buff-Debbuf 1.png"
+        elif type == "invincible":
+            filename = "./res/img/Buff-Debbuf 7.png"
+        else:
+            filename = "./res/img/Buff-Debbuf 13.png"
+        
+        collectable = arcade.Sprite(filename, scale)
         collectable.center_x = random.uniform(GAME_AREA_LEFT, GAME_AREA_RIGHT)
         collectable.center_y = SCREEN_HEIGHT + collectable.height
         collectable.change_x = random.uniform(*COLLECTABLE_STATS[type]["velocity_x"])
