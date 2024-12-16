@@ -427,10 +427,6 @@ class SpaceGameView(arcade.View):
             self.player_shield.draw()
 
         # Draw hud on top of everything else
-        arcade.draw_rectangle_filled(GAME_AREA_LEFT // 2, SCREEN_HEIGHT // 2,
-            GAME_AREA_LEFT, SCREEN_HEIGHT, arcade.color.BLACK)
-        arcade.draw_rectangle_filled(GAME_AREA_RIGHT + GAME_AREA_LEFT // 2, SCREEN_HEIGHT // 2,
-            GAME_AREA_LEFT, SCREEN_HEIGHT, arcade.color.BLACK)
         self.hud_frame.draw()
         
         # This will display the score and text for our game
