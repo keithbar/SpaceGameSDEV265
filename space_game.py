@@ -365,6 +365,11 @@ class SpaceGameView(arcade.View):
         # Music stuff
         self.music = None
         self.music_player = None
+        self.bullet_friendly_sfx = None
+        self.bullet_enemy_sfx = None
+        self.explosion_big_sfx = None
+        self.explosion_small_sfx = None
+        self.powerup_sfx = None
         
         #initializes our score and sets us up to implament the game over when you lose and add new waves in the future
         self.score = 0
@@ -417,6 +422,11 @@ class SpaceGameView(arcade.View):
 
         self.music = arcade.load_sound("./res/music/game.wav", True)
         self.music_player = arcade.play_sound(self.music, looping = True)
+        self.bullet_friendly_sfx = arcade.Sound(":resources:sounds/laser1.wav")
+        self.bullet_enemy_sfx = arcade.Sound(":resources:sounds/laser2.wav")
+        self.explosion_big_sfx = arcade.Sound(":resources:sounds/explosion1.wav")
+        self.explosion_small_sfx = arcade.Sound(":resources:sounds/hit4.wav")
+        self.powerup_sfx = arcade.Sound(":resources:sounds/upgrade1.wav")
 
         # Spawn the initial stars
         for _ in range(NUM_STARS):
@@ -708,10 +718,12 @@ class SpaceGameView(arcade.View):
             explosion = arcade.load_animated_gif("./res/img/explosion1.gif")
             explosion.scale = 1
             explosion.timer = 60
+            self.explosion_big_sfx.play()
         else:
             explosion = arcade.Sprite("./res/img/spark.png")
             explosion.scale = 0.5
             explosion.timer = 3
+            self.explosion_small_sfx.play()
         explosion.center_x = center_x
         explosion.center_y = center_y
         self.explosion_list.append(explosion)
@@ -813,6 +825,11 @@ class SpaceGameView(arcade.View):
         elif type == "player_basic":
             bullet.change_y = self.player.current_bullet_speed
             bullet.strength = self.player.current_bullet_power
+
+        if friendly:
+            self.bullet_friendly_sfx.play()
+        else:
+            self.bullet_enemy_sfx.play()
 
         self.bullet_list.append(bullet)
 
@@ -938,6 +955,8 @@ class SpaceGameView(arcade.View):
             self.set_stage()
         elif type == "invincible":
             self.player.invincible_timer = INVINCIBLE_TIMER
+
+        self.powerup_sfx.play()
 
     def enemy_shooting(self):
         for enemy in self.enemy_list:
