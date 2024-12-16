@@ -435,9 +435,11 @@ class SpaceGameView(arcade.View):
 
         # Draw hud on top of everything else
         self.hud_frame.draw()
-        arcade.draw_text(f"Score: {self.score}", 20, 180, arcade.color.WHITE, 30,
+        arcade.draw_text(f"Score: {self.score}", 20, 190, arcade.color.WHITE, 30,
                          font_name = "Kenney Mini Square")
-        arcade.draw_text(f"Stage: {self.stage}", 20, 80, arcade.color.WHITE, 30,
+        arcade.draw_text(f"Stage: {self.stage}", 20, 110, arcade.color.WHITE, 30,
+                         font_name = "Kenney Mini Square")
+        arcade.draw_text(f"HP: {self.player.health}", 20, 30, arcade.color.WHITE, 30,
                          font_name = "Kenney Mini Square")
         
         # Debug info
@@ -959,6 +961,8 @@ class TitleView(arcade.View):
         super().__init__()
         self.selected_action = START_GAME
         self.bg_moon = None
+        self.music = None
+        self.music_player = None
 
     # setup is currently redundant, left it here in case we want to
     # do more with it in the future
@@ -966,6 +970,8 @@ class TitleView(arcade.View):
         self.selected_action = START_GAME
         self.bg_moon = self.bg_moon = arcade.Sprite("./res/img/bg_moon.png", 
             center_x = SCREEN_WIDTH // 2, center_y = 0)
+        self.music = arcade.load_sound("./res/music/title.wav", True)
+        self.music_player = arcade.play_sound(self.music, looping = True)
 
     def on_draw(self):
         arcade.start_render()
@@ -1043,6 +1049,7 @@ class TitleView(arcade.View):
     def on_key_release(self, key, modifiers):
         if key == arcade.key.ENTER:
             if self.selected_action == START_GAME:
+                arcade.stop_sound(self.music_player)
                 game = SpaceGameView()
                 game.setup()
                 self.window.show_view(game)
