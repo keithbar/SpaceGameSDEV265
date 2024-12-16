@@ -361,6 +361,10 @@ class SpaceGameView(arcade.View):
         #This is for the enemies when implamented 
         self.enemy_list = None
         self.enemy_direction = 1
+
+        # Music stuff
+        self.music = None
+        self.music_player = None
         
         #initializes our score and sets us up to implament the game over when you lose and add new waves in the future
         self.score = 0
@@ -410,6 +414,9 @@ class SpaceGameView(arcade.View):
         self.player.shoot_cooldown_initial = PLAYER_COOLDOWN_DEFAULT
         self.player.shoot_cooldown = 0
         self.player_list.append(self.player)
+
+        self.music = arcade.load_sound("./res/music/game.wav", True)
+        self.music_player = arcade.play_sound(self.music, looping = True)
 
         # Spawn the initial stars
         for _ in range(NUM_STARS):
@@ -493,6 +500,7 @@ class SpaceGameView(arcade.View):
 
     def update(self, delta_time):
         if self.player.health <= 0:
+            arcade.stop_sound(self.music_player)
             game_over = GameOverView()
             game_over.setup(self.score)
             self.window.show_view(game_over)
