@@ -333,6 +333,7 @@ class SpaceGameView(arcade.View):
         self.bullet_list = None
         self.obstacle_list = None
         self.collectable_list = None
+        self.explosion_list = None
         self.player_shield = None
 
         # Stuff for hud
@@ -363,6 +364,7 @@ class SpaceGameView(arcade.View):
         self.collectable_list = arcade.SpriteList()
         self.obstacle_list = arcade.SpriteList()
         self.star_list = arcade.SpriteList()
+        self.explosion_list = arcade.SpriteList()
         self.player_shield = arcade.SpriteCircle(100, arcade.color.BABY_BLUE, True)
         self.player_shield.alpha = 150
         self.hud_frame = arcade.Sprite("./res/img/hud_frame.png", 
@@ -375,7 +377,7 @@ class SpaceGameView(arcade.View):
         self.game_over = False  
         self.stage = 1
         self.paused = False
-        self.between_stage_timer = BETWEEN_STAGE_TIMER
+        self.between_stage_timer = 0
          
         # This is our player I tried to find different sprites but this is what I have for now 
         self.player = arcade.Sprite(":resources:images/space_shooter/playerShip1_orange.png", 0.8)
@@ -417,6 +419,7 @@ class SpaceGameView(arcade.View):
         self.enemy_list.draw()
         self.obstacle_list.draw()
         self.collectable_list.draw()
+        self.explosion_list.draw()
 
         if self.player.invincible_timer > 0:
             self.player_shield.center_x = self.player.center_x
@@ -518,6 +521,12 @@ class SpaceGameView(arcade.View):
         self.enemy_list.update()
         self.obstacle_list.update()
         self.collectable_list.update()
+        self.explosion_list.update_animation()
+
+        for explosion in self.explosion_list:
+            explosion.timer -= 1
+            if explosion.timer < 0:
+                explosion.remove_from_sprite_lists()
 
         # This is what keeps our ship confined to our screen
         if self.player.left < GAME_AREA_LEFT:
@@ -595,6 +604,7 @@ class SpaceGameView(arcade.View):
                 # Decrement player health and destroy enemy
                 for enemy in player_enemy_collision:
                     player.health -= enemy.strength
+                    self.spawn_explosion(enemy.center_x, enemy.center_y)
                     enemy.remove_from_sprite_lists()
 
                 # Check for player-bullet collisions
@@ -612,6 +622,7 @@ class SpaceGameView(arcade.View):
                 )
                 for obstacle in player_obstacle_collision:
                     player.health -= obstacle.strength
+                    self.spawn_explosion(obstacle.center_x, obstacle.center_y)
                     obstacle.remove_from_sprite_lists()
 
             # Check for player-collectable collisions
@@ -636,6 +647,7 @@ class SpaceGameView(arcade.View):
                         self.kills += 1
                         self.set_stage()
                         enemy.remove_from_sprite_lists()
+                        self.spawn_explosion(enemy.center_x, enemy.center_y)
                     bullet.remove_from_sprite_lists()
                     
                     # Break so one bullet doesn't affect multiple enemies
@@ -650,6 +662,7 @@ class SpaceGameView(arcade.View):
                 for obstacle in obstacle_bullet_collision:
                     obstacle.health -= bullet.strength
                     if obstacle.health <= 0:
+                        self.spawn_explosion(obstacle.center_x, obstacle.center_y)
                         obstacle.remove_from_sprite_lists()
                     bullet.remove_from_sprite_lists()
                     break
@@ -672,6 +685,14 @@ class SpaceGameView(arcade.View):
                 self.stage += 1
                 self.between_stage_timer = BETWEEN_STAGE_TIMER
     
+    def spawn_explosion(self, center_x, center_y):
+        explosion = arcade.load_animated_gif("./res/img/explosion1.gif")
+        explosion.center_x = center_x
+        explosion.center_y = center_y
+        explosion.scale = 1
+        explosion.timer = 60
+        self.explosion_list.append(explosion)
+
     # Spawns a new enemy of the given type (see ENEMY_STATS above)
     def spawn_enemy(self, type):
         enemy = Enemy(type)
@@ -853,7 +874,10 @@ class SpaceGameView(arcade.View):
             for enemy in self.enemy_list:
                 self.score += enemy.score
                 self.kills += 1
+                self.spawn_explosion(enemy.center_x, enemy.center_y)
             self.enemy_list.clear()
+            for obstacle in self.obstacle_list:
+                self.spawn_explosion(obstacle.center_x, obstacle.center_y)
             self.obstacle_list.clear()
             self.set_stage()
         elif type == "invincible":
